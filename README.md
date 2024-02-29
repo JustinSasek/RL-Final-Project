@@ -1,1 +1,6 @@
-# RL-Final-Project
+# RL Final Project
+
+## By Justin Sasek and Harshal Bharatia
+
+### Description
+
