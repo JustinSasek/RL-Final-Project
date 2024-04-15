@@ -9,6 +9,7 @@ setup(
     packages=find_packages(include=["rl_final_project"]),
     python_requires="==3.10.13",
     install_requires=[
+        "gym",
         "gymnasium>=0.26",
         "tqdm",
         "numpy",
