@@ -32,7 +32,10 @@ class Agent:
             input_size=state_size + 3,  # action, reward, done, state
             output_size=action_size + 1,  # value, action1, action2, .
         )
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=2e-3)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-2)
+        self.scheduler = None
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 20, 0.5)
+        # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, 50)
 
     def __call__(self, hist: list[list[float]]) -> int:
         # if hist[-1][1] == 1:
@@ -108,20 +111,24 @@ class Agent:
         pi_taken = torch.gather(pis, -1, actions.unsqueeze(-1)).squeeze(-1)
         deltas = returns - values
         deltas = deltas.detach()
-        Q_loss = -torch.mean(deltas * torch.log(pi_taken))
-        loss = value_loss + Q_loss
+        pi_loss = -torch.mean(deltas * torch.log(pi_taken))
+        loss = value_loss + 0.5 * pi_loss
 
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+        if self.scheduler:
+            self.scheduler.step()
+
+        return value_loss.item(), pi_loss.item()
 
 
 @dataclass
 class Experiment:
     seq_len: int = 1
-    discount_rate: float = 0.9
+    discount_rate: float = 0.5
     epilison: float = 0.1
-    batch_size: int = 1
+    batch_size: int = 16
 
     def __post_init__(self):
         env = RandomWalkEnv()
@@ -133,17 +140,16 @@ class Experiment:
             self.discount_rate,
         )
 
-    def run(
-        self, n_episodes: int, update: bool, starting_epsilon: float
-    ) -> list[float]:
+    def run(self, n_episodes: int, update: bool, starting_epsilon: float):
         # env = gym.make("MountainCar-v0")
         env = RandomWalkEnv()
 
         hists = []
         returns = []
+        losses = []
         self.pi.epilison = starting_epsilon
         for ep in tqdm(range(n_episodes), colour="green"):
-            if (ep+1) % (n_episodes // 4) == 0:
+            if (ep + 1) % (n_episodes // 4) == 0:
                 self.pi.epilison /= 2
                 pass
             s, _ = env.reset()
@@ -162,9 +168,9 @@ class Experiment:
             s = env.reset()
             if len(hists) >= self.batch_size:
                 if update:
-                    self.pi.update(hists)
+                    losses.append(self.pi.update(hists))
                 hists = []
-        return returns
+        return returns, losses
 
     def train(self, n_episodes: int) -> list[float]:
         return self.run(n_episodes, True, self.epilison)
@@ -183,7 +189,9 @@ class Experiment:
 
 if __name__ == "__main__":
     exp = Experiment()
-    returns = exp.train(1000)
+    returns, losses = exp.train(1000)
     exp.visualize(returns)
-    # returns = exp.eval(1000)
+    exp.visualize([val for val, _ in losses])
+    exp.visualize([pi for _, pi in losses])
+    # returns = exp.eval(100)
     # exp.visualize(returns)

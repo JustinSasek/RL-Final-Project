@@ -1,9 +1,11 @@
 import math
+from copy import deepcopy
 from typing import Optional as Op
 
 import torch
-from .util import ModelInterface, nn_dataclass
 from torch import nn
+
+from .util import ModelInterface, nn_dataclass
 
 
 @nn_dataclass
@@ -135,9 +137,15 @@ class MultiHeadAttention(nn.Module):
                 return self.dropout(x + self.fc(x))
 
         self.Q = FC(config)
-        self.K = FC(config)
+        # self.K = FC(config)
+        self.K = deepcopy(self.Q)
+        
         self.V = FC(config)
+        self.V.fc.weight.data = torch.eye(config.d_model)
+        self.V.fc.bias.data.zero_()
         self.fc = FC(config)
+        self.fc.fc.weight.data = torch.eye(config.d_model)
+        self.fc.fc.bias.data.zero_()
 
         self.d_h = config.d_model // config.h
 
@@ -200,7 +208,9 @@ class FeedForward(nn.Module):
     def __init__(self, config: Transformer):
         super().__init__()
         self.fc0 = nn.Linear(config.d_model, config.d_ff)
-        self.batch_norm0 = nn.BatchNorm1d(config.d_ff, affine=False, track_running_stats=False)
+        self.batch_norm0 = nn.BatchNorm1d(
+            config.d_ff, affine=False, track_running_stats=False
+        )
         self.act0 = nn.LeakyReLU()
         self.dropout0 = nn.Dropout(config.dropout)
         self.fc1 = nn.Linear(config.d_ff, config.d_model)
