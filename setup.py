@@ -10,6 +10,7 @@ setup(
     python_requires="==3.10.13",
     install_requires=[
         "gym",
+        "seaborn",
         "gymnasium>=0.26",
         "tqdm",
         "numpy",

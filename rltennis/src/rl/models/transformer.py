@@ -2,9 +2,8 @@ import math
 from typing import Optional as Op
 
 import torch
+from .util import ModelInterface, nn_dataclass
 from torch import nn
-
-from rl.models import ModelInterface, nn_dataclass
 
 
 @nn_dataclass
@@ -30,19 +29,20 @@ class Transformer(ModelInterface):
         """
         assert x.shape[-1] == self.d_model, f"Input embedding size mismatch {x.shape}"
         if self.training:
-            assert x.shape[-2] <= self.max_len, f"Input sequence length exceeds max_len {x.shape} during training"
-        
-        output:torch.Tensor = torch.empty_like(x)
-        output[..., :self.max_len, :] = self._forward(x[..., :self.max_len, :])
-        
-        for i in range(0, x.shape[-2]-self.max_len, 1):
+            assert (
+                x.shape[-2] <= self.max_len
+            ), f"Input sequence length exceeds max_len {x.shape} during training"
+
+        output: torch.Tensor = torch.empty_like(x)
+        output[..., : self.max_len, :] = self._forward(x[..., : self.max_len, :])
+
+        for i in range(0, x.shape[-2] - self.max_len, 1):
             start = i + 1
             end = start + self.max_len
-            output[..., end-1, :] = self._forward(x[..., start:end, :])[..., -1, :]
-            
+            output[..., end - 1, :] = self._forward(x[..., start:end, :])[..., -1, :]
+
         return output
-            
-        
+
     def _forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.pos_encoding(x)
         x = self.pos_encoding_dropout(x)
@@ -200,7 +200,7 @@ class FeedForward(nn.Module):
     def __init__(self, config: Transformer):
         super().__init__()
         self.fc0 = nn.Linear(config.d_model, config.d_ff)
-        self.batch_norm0 = nn.BatchNorm1d(config.d_ff)
+        self.batch_norm0 = nn.BatchNorm1d(config.d_ff, affine=False, track_running_stats=False)
         self.act0 = nn.LeakyReLU()
         self.dropout0 = nn.Dropout(config.dropout)
         self.fc1 = nn.Linear(config.d_ff, config.d_model)
@@ -211,7 +211,8 @@ class FeedForward(nn.Module):
         """
         x_orig = x
         x = self.fc0(x)
-        x = self.batch_norm0(x)
+        if sum(x.shape[:-1]) > 1:
+            x = self.batch_norm0(x)
         x = self.act0(x)
         x = self.dropout0(x)
         x = self.fc1(x)

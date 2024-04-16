@@ -1,10 +1,9 @@
 from dataclasses import field
 
 import torch
+from .util import ModelInterface, nn_dataclass
+from .transformer import Transformer
 from torch import nn
-
-from rl.models import ModelInterface, nn_dataclass
-from rl.models.transformer import Transformer
 
 
 @nn_dataclass
@@ -20,6 +19,7 @@ class SingleVectorWrapper(ModelInterface):
         self.act_out = nn.LeakyReLU()
         self.dropout_out = nn.Dropout(self.dropout)
         self.fc_out = nn.Linear(self.transformer.d_model, self.output_size)
+        self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.fc_in(x)
@@ -27,4 +27,5 @@ class SingleVectorWrapper(ModelInterface):
         x = self.act_out(x)
         x = self.dropout_out(x)
         x = self.fc_out(x)
+        x = self.softmax(x)
         return x
