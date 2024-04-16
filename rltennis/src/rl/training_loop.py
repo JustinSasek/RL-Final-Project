@@ -16,15 +16,16 @@ class Agent:
         self,
         state_size: int,
         action_size: int,
-        horizon: int,
+        seq_len: int,
         epilison: float,
         discount_rate: float,
     ):
         self.action_size = action_size
+        self.seq_len = seq_len
         self.epilison = epilison
         self.discount_rate = discount_rate
         transformer = Transformer(
-            N=1, d_model=8, d_ff=16, h=2, max_len=horizon, dropout=0.1
+            N=1, d_model=8, d_ff=16, h=2, max_len=seq_len, dropout=0.1
         )
         self.model = SingleVectorWrapper(
             transformer=transformer,
@@ -37,19 +38,22 @@ class Agent:
         if np.random.rand() < self.epilison:
             return np.random.randint(self.action_size)
         hist_tensor = torch.tensor(hist, dtype=torch.float32)
+        hist_tensor = hist_tensor[..., -self.seq_len :, :]
         output: torch.Tensor = self.model(hist_tensor)[-1]  # only use last timestep
         Qs: torch.Tensor = output[..., 1:] + output[..., 0].unsqueeze(-1)
         return int(torch.argmax(Qs).item())
 
-    def update(self, hists: list[list[list[float]]]):
-        hist_tensor = torch.tensor(hists, dtype=torch.float32)
-
+    def process_hist(
+        self,
+        hist: list[list[float]],
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        hist_tensor = torch.tensor(hist, dtype=torch.float32)
         rewards = hist_tensor[..., 1]
         actions = hist_tensor[..., 0].to(torch.int64)
         discounts = self.discount_rate ** torch.arange(
             rewards.shape[-1], dtype=torch.float32
         )
-        discounts = discounts.unsqueeze(0)
+        discounts = discounts
         rewards *= discounts
         returns = torch.cumsum(rewards.flip(-1), dim=-1).flip(-1)
         returns /= discounts
@@ -58,8 +62,42 @@ class Agent:
         returns = returns[..., 1:]
         hist_tensor = hist_tensor[..., :-1, :]
         actions = actions[..., 1:]
+        return hist_tensor, actions, returns
 
-        outputs: torch.Tensor = self.model(hist_tensor)
+    def split_seq(
+        self, hist_tensor: torch.Tensor, actions: torch.Tensor, returns: torch.Tensor
+    ) -> tuple[list[torch.Tensor], list[torch.Tensor], list[torch.Tensor]]:
+        split_hist = []
+        split_actions = []
+        split_returns = []
+        for i in range(hist_tensor.shape[0] - self.seq_len + 1):
+            split_hist.append(hist_tensor[i : i + self.seq_len])
+            split_actions.append(actions[i : i + self.seq_len])
+            split_returns.append(returns[i : i + self.seq_len])
+        if len(split_hist) == 0:
+            split_hist.append(hist_tensor)
+            split_actions.append(actions)
+            split_returns.append(returns)
+        return split_hist, split_actions, split_returns
+
+    def update(self, hists: list[list[list[float]]]):
+        hists_list = []
+        actions_list = []
+        returns_list = []
+        for hist in hists:
+            hist_tensor, actions, returns = self.process_hist(hist)
+            split_hist, split_actions, split_returns = self.split_seq(
+                hist_tensor, actions, returns
+            )
+            hists_list += split_hist
+            actions_list += split_actions
+            returns_list += split_returns
+
+        hists_tensor = torch.stack(hists_list)
+        actions = torch.stack(actions_list)
+        returns = torch.stack(returns_list)
+
+        outputs: torch.Tensor = self.model(hists_tensor)
         values = outputs[..., 0]
         Qs = outputs[..., 1:]
 
@@ -76,8 +114,8 @@ class Agent:
 
 @dataclass
 class Experiment:
-    seq_len: int = 10
-    n_episodes: int = 100
+    seq_len: int = 2
+    n_episodes: int = 1000
     discount_rate: float = 0.8
     epilison: float = 0.1
     batch_size: int = 1
@@ -96,7 +134,7 @@ class Experiment:
 
         hists = []
         returns = []
-        for _ in tqdm(range(self.n_episodes)):
+        for _ in tqdm(range(self.n_episodes), colour="green"):
             s, _ = env.reset()
             hist = [[0, 0.0, False, *s]]  # a, r, done, s
             ep_return = 0.0
@@ -106,25 +144,19 @@ class Experiment:
                 ep_return += r
                 done = done or term
                 hist.append([a, r, done, *s])
-                if len(hist) >= self.seq_len:  # TODO: keep history together, split up in the update function so that returns are in tact
-                    hists.append(hist)
-                    hist = hist[-1:]
-                    if len(hists) >= self.batch_size:
-                        pi.update(hists)
-                        hists = []
                 if done:
                     hists.append(hist)
-                    if len(hists) >= self.batch_size:
-                        pi.update(hists)
-                        hists = []
                     returns.append(ep_return)
                     break
             s = env.reset()
+            if len(hists) >= self.batch_size:
+                pi.update(hists)
+                hists = []
         return returns
 
 
 if __name__ == "__main__":
-    exp = Experiment(n_episodes=1000)
+    exp = Experiment()
     returns = exp.run()
     sns.lineplot(x=range(len(returns)), y=returns)
     plt.xlabel("Episode")

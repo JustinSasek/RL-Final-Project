@@ -13,8 +13,10 @@ class RandomWalkEnv(gym.Env):
 
     def reset(self):
         self.count = 0
-        self.goal = np.random.randint(0, self.num_states)
-        self.state = self.num_states // 2  # Start from the middle state
+        self.goal = np.random.randint(0, self.num_states - 1)
+        self.state = np.random.randint(0, self.num_states - 1)
+        while self.state == self.goal:
+            self.state = np.random.randint(0, self.num_states - 1)
         return np.array([self.state]), None
 
     def step(self, action):
@@ -41,8 +43,28 @@ class RandomWalkEnv(gym.Env):
             reward = 10
             done = True
 
-        return np.array([self.state]), reward, done, self.count >= 10, {}
+        return np.array([self.state]), reward, done, self.count >= 50, {}
 
     def render(self, mode='human'):
         # Not implemented for this simple environment
         pass
+
+if __name__ == "__main__":
+    for ep in range(100):
+        env = RandomWalkEnv()
+        s, _ = env.reset()
+        R = 0
+        s, r, done, term, _ = env.step(0)
+        R += r
+        if done:
+            pass
+        elif r == 1:
+            while not done and not term:
+                s, r, done, term, _ = env.step(0)
+                R += r
+                
+        else:
+            while not done and not term:
+                s, r, done, term, _ = env.step(1)
+                R += r
+        print(f"Episode {ep} done with return {R}")
