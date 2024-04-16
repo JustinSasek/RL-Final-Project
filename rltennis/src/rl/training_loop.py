@@ -25,23 +25,26 @@ class Agent:
         self.epilison = epilison
         self.discount_rate = discount_rate
         transformer = Transformer(
-            N=1, d_model=8, d_ff=16, h=2, max_len=seq_len, dropout=0.1
+            N=1, d_model=16, d_ff=32, h=4, max_len=seq_len, dropout=0.1
         )
         self.model = SingleVectorWrapper(
             transformer=transformer,
             input_size=state_size + 3,  # action, reward, done, state
             output_size=action_size + 1,  # value, action1, action2, .
         )
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=5e-4)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=2e-3)
 
     def __call__(self, hist: list[list[float]]) -> int:
+        # if hist[-1][1] == 1:
+        #     return hist[-1][0]
+        # return 1 - hist[-1][0]
         if np.random.rand() < self.epilison:
             return np.random.randint(self.action_size)
         hist_tensor = torch.tensor(hist, dtype=torch.float32)
         hist_tensor = hist_tensor[..., -self.seq_len :, :]
         output: torch.Tensor = self.model(hist_tensor)[-1]  # only use last timestep
-        Qs: torch.Tensor = output[..., 1:] + output[..., 0].unsqueeze(-1)
-        return int(torch.argmax(Qs).item())
+        pis: torch.Tensor = output[..., 1:]
+        return int(torch.argmax(pis).item())
 
     def process_hist(
         self,
@@ -115,8 +118,8 @@ class Agent:
 
 @dataclass
 class Experiment:
-    seq_len: int = 4
-    discount_rate: float = 0.8
+    seq_len: int = 1
+    discount_rate: float = 0.9
     epilison: float = 0.1
     batch_size: int = 1
 
@@ -140,8 +143,8 @@ class Experiment:
         returns = []
         self.pi.epilison = starting_epsilon
         for ep in tqdm(range(n_episodes), colour="green"):
-            if ep > n_episodes // 2:
-                # self.pi.epilison = starting_epsilon / 2
+            if (ep+1) % (n_episodes // 4) == 0:
+                self.pi.epilison /= 2
                 pass
             s, _ = env.reset()
             hist = [[0, 0.0, False, *s]]  # a, r, done, s
@@ -180,7 +183,7 @@ class Experiment:
 
 if __name__ == "__main__":
     exp = Experiment()
-    returns = exp.train(2000)
+    returns = exp.train(1000)
     exp.visualize(returns)
     # returns = exp.eval(1000)
     # exp.visualize(returns)
