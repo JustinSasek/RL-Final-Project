@@ -34,7 +34,7 @@ class Agent:
         )
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-2)
         self.scheduler = None
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 20, 0.5)
+        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 10, 0.75)
         # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, 50)
 
     def __call__(self, hist: list[list[float]]) -> int:
@@ -127,7 +127,7 @@ class Agent:
 class Experiment:
     seq_len: int = 1
     discount_rate: float = 0.5
-    epilison: float = 0.1
+    epilison: float = 0.2
     batch_size: int = 16
 
     def __post_init__(self):
@@ -140,7 +140,9 @@ class Experiment:
             self.discount_rate,
         )
 
-    def run(self, n_episodes: int, update: bool, starting_epsilon: float):
+    def run(
+        self, n_episodes: int, update: bool, starting_epsilon: float
+    ) -> tuple[list[float], list[tuple[float, float]]]:
         # env = gym.make("MountainCar-v0")
         env = RandomWalkEnv()
 
@@ -149,7 +151,7 @@ class Experiment:
         losses = []
         self.pi.epilison = starting_epsilon
         for ep in tqdm(range(n_episodes), colour="green"):
-            if (ep + 1) % (n_episodes // 4) == 0:
+            if (ep + 1) % (n_episodes // 2) == 0:
                 self.pi.epilison /= 2
                 pass
             s, _ = env.reset()
@@ -172,10 +174,10 @@ class Experiment:
                 hists = []
         return returns, losses
 
-    def train(self, n_episodes: int) -> list[float]:
+    def train(self, n_episodes: int) -> tuple[list[float], list[tuple[float, float]]]:
         return self.run(n_episodes, True, self.epilison)
 
-    def eval(self, n_episodes: int) -> list[float]:
+    def eval(self, n_episodes: int) -> tuple[list[float], list[tuple[float, float]]]:
         return self.run(n_episodes, False, 0.0)
 
     @staticmethod
@@ -189,7 +191,7 @@ class Experiment:
 
 if __name__ == "__main__":
     exp = Experiment()
-    returns, losses = exp.train(1000)
+    returns, losses = exp.train(500)
     exp.visualize(returns)
     exp.visualize([val for val, _ in losses])
     exp.visualize([pi for _, pi in losses])
