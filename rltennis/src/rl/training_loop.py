@@ -32,7 +32,7 @@ class Agent:
             input_size=state_size + 3,  # action, reward, done, state
             output_size=action_size + 1,  # value, action1, action2, .
         )
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=5e-4)
 
     def __call__(self, hist: list[list[float]]) -> int:
         if np.random.rand() < self.epilison:
@@ -99,12 +99,13 @@ class Agent:
 
         outputs: torch.Tensor = self.model(hists_tensor)
         values = outputs[..., 0]
-        Qs = outputs[..., 1:]
+        pis = outputs[..., 1:]
 
         value_loss = torch.nn.functional.mse_loss(values, returns)
-        Qs_taken = torch.gather(Qs, -1, actions.unsqueeze(-1)).squeeze(-1)
-        Q_deltas = returns - Qs_taken
-        Q_loss = -torch.mean(Q_deltas * torch.log(Qs_taken))
+        pi_taken = torch.gather(pis, -1, actions.unsqueeze(-1)).squeeze(-1)
+        deltas = returns - values
+        deltas = deltas.detach()
+        Q_loss = -torch.mean(deltas * torch.log(pi_taken))
         loss = value_loss + Q_loss
 
         self.optimizer.zero_grad()
@@ -114,17 +115,14 @@ class Agent:
 
 @dataclass
 class Experiment:
-    seq_len: int = 2
-    n_episodes: int = 1000
+    seq_len: int = 4
     discount_rate: float = 0.8
     epilison: float = 0.1
     batch_size: int = 1
 
-    def run(self) -> list[float]:
-        # env = gym.make("MountainCar-v0")
+    def __post_init__(self):
         env = RandomWalkEnv()
-
-        pi = Agent(
+        self.pi = Agent(
             1,
             env.action_space.n,  # type: ignore
             self.seq_len,
@@ -132,14 +130,24 @@ class Experiment:
             self.discount_rate,
         )
 
+    def run(
+        self, n_episodes: int, update: bool, starting_epsilon: float
+    ) -> list[float]:
+        # env = gym.make("MountainCar-v0")
+        env = RandomWalkEnv()
+
         hists = []
         returns = []
-        for _ in tqdm(range(self.n_episodes), colour="green"):
+        self.pi.epilison = starting_epsilon
+        for ep in tqdm(range(n_episodes), colour="green"):
+            if ep > n_episodes // 2:
+                # self.pi.epilison = starting_epsilon / 2
+                pass
             s, _ = env.reset()
             hist = [[0, 0.0, False, *s]]  # a, r, done, s
             ep_return = 0.0
             while True:
-                a = pi(hist)
+                a = self.pi(hist)
                 s, r, done, term, *_ = env.step(a)
                 ep_return += r
                 done = done or term
@@ -150,16 +158,29 @@ class Experiment:
                     break
             s = env.reset()
             if len(hists) >= self.batch_size:
-                pi.update(hists)
+                if update:
+                    self.pi.update(hists)
                 hists = []
         return returns
+
+    def train(self, n_episodes: int) -> list[float]:
+        return self.run(n_episodes, True, self.epilison)
+
+    def eval(self, n_episodes: int) -> list[float]:
+        return self.run(n_episodes, False, 0.0)
+
+    @staticmethod
+    def visualize(returns: list[float]):
+        sns.lineplot(x=range(len(returns)), y=returns)
+        plt.xlabel("Episode")
+        plt.ylabel("Return")
+        plt.title("Returns over Episodes")
+        plt.show()
 
 
 if __name__ == "__main__":
     exp = Experiment()
-    returns = exp.run()
-    sns.lineplot(x=range(len(returns)), y=returns)
-    plt.xlabel("Episode")
-    plt.ylabel("Return")
-    plt.title("Returns over Episodes")
-    plt.show()
+    returns = exp.train(2000)
+    exp.visualize(returns)
+    # returns = exp.eval(1000)
+    # exp.visualize(returns)
