@@ -505,6 +505,10 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
 
 
 class TennisBehaviorShotRewardOnly(SimpleDiscreteTennisBehavior):
+    def __init__(self, *args, **kwargs):
+        kwargs["perfect_system"] = True
+        super().__init__(*args, **kwargs)
+        
     REWARD_MAP = {
         DiscreteTennis.ACTIVITY_SYSTEM_INVALID_SHOT: 0,
         DiscreteTennis.ACTIVITY_SYSTEM_MISS: 0,

@@ -1,3 +1,4 @@
+from collections import Counter
 from dataclasses import dataclass
 
 import gym
@@ -33,10 +34,13 @@ class Agent:
             input_size=state_size + 3,  # action, reward, done, state
             output_size=action_size + 1,  # value, action1, action2, .
         )
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
+        # optimistic initialization
+        self.model.fc_out.weight.data.zero_()
+        self.model.fc_out.bias.data.fill_(5)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
         self.scheduler = None
         # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 10, 0.75)
-        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, 50)
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, 10)
 
     def __call__(self, hist: list[list[float]]) -> int:
         if np.random.rand() < self.epilison:
@@ -45,23 +49,30 @@ class Agent:
         hist_tensor = hist_tensor[..., -self.seq_len :, :]
         output: torch.Tensor = self.model(hist_tensor)[-1]  # only use last timestep
         pis: torch.Tensor = output[..., 1:]
-        return int(torch.argmax(pis).item())
+        pis = torch.nn.functional.softmax(pis, dim=-1)
+        selected_actions = int(torch.multinomial(pis, num_samples=1).squeeze(-1))
+        return selected_actions
 
     def process_hist(
         self,
         hist: list[list[float]],
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Finds returns and aligns tensors for training."""
-        hist_tensor = torch.tensor(hist, dtype=torch.float32)
-        rewards = hist_tensor[..., 1]
+        hist_tensor = torch.tensor(
+            hist, dtype=torch.float64
+        )  # boost precision for discounting
+        rewards = hist_tensor[..., 1].clone()
         actions = hist_tensor[..., 0].to(torch.int64)
         discounts = self.discount_rate ** torch.arange(
-            rewards.shape[-1], dtype=torch.float32
+            rewards.shape[-1], dtype=torch.float64
         )
-        discounts = discounts
         rewards *= discounts
         returns = torch.cumsum(rewards.flip(-1), dim=-1).flip(-1)
         returns /= discounts
+
+        # convert to float32
+        returns = returns.to(torch.float32)
+        hist_tensor = hist_tensor.to(torch.float32)
 
         # shift tensors
         returns = returns[..., 1:]
@@ -106,6 +117,7 @@ class Agent:
         outputs: torch.Tensor = self.model(hists_tensor)
         values = outputs[..., 0]
         pis = outputs[..., 1:]
+        pis = torch.nn.functional.softmax(pis, dim=-1)
 
         value_loss = torch.nn.functional.mse_loss(values, returns)
         pi_taken = torch.gather(pis, -1, actions.unsqueeze(-1)).squeeze(-1)
@@ -127,11 +139,11 @@ class Agent:
 class Experiment:
     seq_len: int = 1
     discount_rate: float = 0.5
-    epilison: float = 0.2
+    epilison: float = 0.1
     batch_size: int = 1
 
     def __post_init__(self):
-        self.env = DiscreteTennis(TennisBehaviorShotRewardOnly(perfect_system=True))
+        self.env = DiscreteTennis(TennisBehaviorShotRewardOnly())
         self.pi = Agent(
             self.env.observation_space.shape[0],
             self.env.action_space.n,  # type: ignore
@@ -141,7 +153,11 @@ class Experiment:
         )
 
     def run(
-        self, n_episodes: int, update: bool, starting_epsilon: float
+        self,
+        n_episodes: int,
+        update: bool,
+        starting_epsilon: float,
+        verbose: bool = False,
     ) -> tuple[list[float], list[tuple[float, float]]]:
         self.env.reset()
 
@@ -157,8 +173,10 @@ class Experiment:
             s, _ = self.env.reset()
             hist = [[0, 0.0, False, *s]]  # a, r, done, s
             ep_return = 0.0
+            c: Counter = Counter()
             while True:
                 a = self.pi(hist)
+                c[a] += 1
                 s, r, done, term, *_ = self.env.step(a)
                 self.env.render()
                 ep_return += r
@@ -168,6 +186,8 @@ class Experiment:
                     hists.append(hist)
                     returns.append(ep_return)
                     break
+            if verbose:
+                print(c)
             s = self.env.reset()
             if len(hists) >= self.batch_size:
                 if update:
@@ -175,26 +195,28 @@ class Experiment:
                 hists = []
         return returns, losses
 
-    def train(self, n_episodes: int) -> tuple[list[float], list[tuple[float, float]]]:
+    def train(
+        self, n_episodes: int, verbose: bool = False
+    ) -> tuple[list[float], list[tuple[float, float]]]:
         self.env._render_view = False
-        return self.run(n_episodes, True, self.epilison)
+        return self.run(n_episodes, True, self.epilison, verbose)
 
-    def eval(self, n_episodes: int) -> tuple[list[float], list[tuple[float, float]]]:
+    def eval(
+        self, n_episodes: int, verbose: bool = False
+    ) -> tuple[list[float], list[tuple[float, float]]]:
         self.env._render_view = True
-        return self.run(n_episodes, False, 0.0)
+        return self.run(n_episodes, False, 0.0, verbose)
 
     @staticmethod
     def visualize(returns: list[float]):
         sns.lineplot(x=range(len(returns)), y=returns)
         plt.xlabel("Episode")
-        plt.ylabel("Return")
-        plt.title("Returns over Episodes")
         plt.show()
 
 
 if __name__ == "__main__":
     exp = Experiment()
-    returns, losses = exp.train(500)
+    returns, losses = exp.train(200, verbose=False)
     exp.visualize(returns)
     exp.visualize([val for val, _ in losses])
     exp.visualize([pi for _, pi in losses])
