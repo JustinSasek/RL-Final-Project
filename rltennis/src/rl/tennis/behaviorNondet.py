@@ -2,6 +2,9 @@
 import logging
 import random
 from math import sqrt
+from typing import Optional as Op
+
+position_t = tuple[int, int]
 
 import cv2
 from rl.tennis.discreteTennis import (
@@ -21,7 +24,7 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
     _logger = logging.getLogger(LOGGER_BASE)
     _LOG_TAG = {"lgmod": "TNENV"}
 
-    REWARD_MAP = {
+    REWARD_MAP: dict[tuple[int], float] = {
         DiscreteTennis.ACTIVITY_SYSTEM_INVALID_SHOT: 2,
         DiscreteTennis.ACTIVITY_SYSTEM_MISS: 2,
         DiscreteTennis.ACTIVITY_SYSTEM_SHOT: 0,
@@ -86,7 +89,7 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
         self.random = random.Random(seed)
         self.start()
 
-    def compute_reward(self, activity):
+    def compute_reward(self, activity: tuple[int]) -> float:
         """
         Compute reward value for the specified activity that occured during the step.
 
@@ -94,11 +97,11 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
         """
         return self.REWARD_MAP[activity]
 
-    def on_end_game(self):
+    def on_end_game(self) -> None:
         self.player_2x_displace = False
         self.system_2x_displace = False
 
-    def start(self):
+    def start(self) -> None:
         """
         Start this behavior. Must be called if any configuration changes are performed upon creation
         of an instance of this class.
@@ -110,7 +113,9 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
             self.system_x * self.system_x + self.system_y * self.system_y
         )
 
-    def is_player_reachable(self, ball_position, player_position):
+    def is_player_reachable(
+        self, ball_position: position_t, player_position: position_t
+    ) -> bool:
         """
         Check if the player can reach the shot ending with the ball at specified position while the
         player is at specified position.
@@ -130,7 +135,9 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
             distance = distance * expand
         return distance < self.player_reach
 
-    def is_system_reachable(self, ball_position, system_position):
+    def is_system_reachable(
+        self, ball_position: position_t, system_position: position_t
+    ) -> bool:
         """
         Check if the system can reach the shot ending with the ball at specified position while the
         system is at specified position.
@@ -150,7 +157,7 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
             distance = distance * expand
         return distance < self.player_reach
 
-    def is_shot_valid(self, actor, shot_start, shot_end):
+    def is_shot_valid(self, actor: int, shot_start: position_t, shot_end: position_t):
         """
         Check if the specified shot by the actor is a valid shot. Actor loses points for invalid
         shots as per rules of tennis.
@@ -189,7 +196,7 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
 
         return True
 
-    def next_system_action(self, fire, serve, env):
+    def next_system_action(self, fire: bool, serve: bool, env: DiscreteTennis):
         """
         Take the next action on behalf of the system. This method updates the environment as a result of taking
         the step. Additionally, push any renderable events to enable visualization if needed. The method assumes
@@ -333,7 +340,7 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
                         extra=self._LOG_TAG,
                     )
 
-    def _snap_to_grid(self, pos):
+    def _snap_to_grid(self, pos: position_t) -> position_t:
         """
         Snap the position to closest grid cell corner.
 
@@ -344,7 +351,13 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
         grid_y = int(round(pos[1] / self.cell_y)) * self.cell_y
         return (grid_x, grid_y)
 
-    def _shot_target_by2x_displace(self, actor, actor_at, peer_position, ball_owner):
+    def _shot_target_by2x_displace(
+        self,
+        actor: int,
+        actor_at: position_t,
+        peer_position: position_t,
+        ball_owner: int,
+    ) -> tuple[float, float, int]:
         """
         Determine the ball target position where shot will end based on 2x horizontal distance from peer.
 
@@ -390,8 +403,13 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
         )
 
     def _shot_target_by_stretch(
-        self, actor, actor_at, peer_position, is_difficult, ball_owner
-    ):
+        self,
+        actor: int,
+        actor_at: position_t,
+        peer_position: position_t,
+        is_difficult: Op[bool],
+        ball_owner: int,
+    ) -> tuple[float, float, int]:
 
         if is_difficult is None:
             actor_difficulty = (
@@ -408,8 +426,8 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
             peer_reach_x = self.system_x
             peer_reach = self.system_reach
 
-        target_x = 0
-        target_y = 0
+        target_x = 0.0
+        target_y = 0.0
 
         if is_difficult:
             # Shot must be within the stretched distance over the reach capacity of the peer.
@@ -427,8 +445,8 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
         to_left = bool(self.random.getrandbits(1))
         to_front = bool(self.random.getrandbits(1))
 
-        ball_x = peer_position[0]
-        ball_y = peer_position[1]
+        ball_x:float = peer_position[0]
+        ball_y:float = peer_position[1]
 
         ball_x = (ball_x - target_x) if to_left else (ball_x + target_x)
         ball_x = max(0.0, min(ball_x, 1.0))
@@ -438,7 +456,9 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
 
         return (ball_x, ball_y, ball_owner)
 
-    def shot_target(self, actor, hitter_at, peer_position):
+    def shot_target(
+        self, actor: int, hitter_at: position_t, peer_position: position_t
+    ) -> tuple[float, float, int]:
         """
         Determine the ball target position where shot will end based on the expected difficulty of the game and
         shot_target_stretch_factor configured for this behavior.
@@ -508,7 +528,7 @@ class TennisBehaviorShotRewardOnly(SimpleDiscreteTennisBehavior):
     def __init__(self, *args, **kwargs):
         kwargs["perfect_system"] = True
         super().__init__(*args, **kwargs)
-        
+
     REWARD_MAP = {
         DiscreteTennis.ACTIVITY_SYSTEM_INVALID_SHOT: 0,
         DiscreteTennis.ACTIVITY_SYSTEM_MISS: 0,

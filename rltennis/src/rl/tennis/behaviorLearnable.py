@@ -2,6 +2,7 @@
 import logging
 import random
 from math import sqrt
+from typing import Optional as Op
 
 from rl.tennis.discreteTennis import (
     DiscreteTennis,
@@ -76,7 +77,7 @@ class LearnableTennisBehavior(TennisBehavior):
         self.random = random.Random(seed)
 
         self._shot_seq_factory = ShotSequenceFactory.get_default_factory()
-        self._actor_mgmt = [None, None]
+        self._actor_mgmt: list[Op[ActorShotManagement]] = [None, None]
         # Player does not miss any within reach shot for reducing non-determinism.
         self._actor_mgmt[DiscreteTennis.PLAYER] = ActorShotManagement(0.0)
         # System misses some within reach shots depending on game difficulty. This is to make it easier for
@@ -207,7 +208,7 @@ class LearnableTennisBehavior(TennisBehavior):
 
         return True
 
-    def next_system_action(self, fire, serve, env):
+    def next_system_action(self, fire:bool, serve:bool, env:DiscreteTennis):
         """
         Take the next action on behalf of the system. This method updates the environment as a result of taking
         the step. Additionally, push any renderable events to enable visualization if needed. The method assumes
