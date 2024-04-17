@@ -5,10 +5,11 @@ import numpy as np
 import seaborn as sns  # type: ignore
 import torch
 from matplotlib import pyplot as plt
+from rl.models import SingleVectorWrapper, Transformer
+from rl.other_envs.random_walk import RandomWalkEnv
+from rl.tennis.behaviorNondet import TennisBehaviorShotRewardOnly
+from rl.tennis.discreteTennis import DiscreteTennis
 from tqdm import tqdm  # type: ignore
-
-from rltennis.src.rl.models import SingleVectorWrapper, Transformer
-from rltennis.src.rl.other_envs.random_walk import RandomWalkEnv
 
 
 class Agent:
@@ -25,22 +26,19 @@ class Agent:
         self.epilison = epilison
         self.discount_rate = discount_rate
         transformer = Transformer(
-            N=1, d_model=16, d_ff=32, h=4, max_len=seq_len, dropout=0.1
+            N=1, d_model=64, d_ff=128, h=4, max_len=seq_len, dropout=0.1
         )
         self.model = SingleVectorWrapper(
             transformer=transformer,
             input_size=state_size + 3,  # action, reward, done, state
             output_size=action_size + 1,  # value, action1, action2, .
         )
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-2)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-4)
         self.scheduler = None
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 10, 0.75)
-        # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, 50)
+        # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 10, 0.75)
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, 50)
 
     def __call__(self, hist: list[list[float]]) -> int:
-        # if hist[-1][1] == 1:
-        #     return hist[-1][0]
-        # return 1 - hist[-1][0]
         if np.random.rand() < self.epilison:
             return np.random.randint(self.action_size)
         hist_tensor = torch.tensor(hist, dtype=torch.float32)
@@ -53,6 +51,7 @@ class Agent:
         self,
         hist: list[list[float]],
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Finds returns and aligns tensors for training."""
         hist_tensor = torch.tensor(hist, dtype=torch.float32)
         rewards = hist_tensor[..., 1]
         actions = hist_tensor[..., 0].to(torch.int64)
@@ -73,6 +72,7 @@ class Agent:
     def split_seq(
         self, hist_tensor: torch.Tensor, actions: torch.Tensor, returns: torch.Tensor
     ) -> tuple[list[torch.Tensor], list[torch.Tensor], list[torch.Tensor]]:
+        """Splits the history tensor into sequences of length seq_len."""
         split_hist = []
         split_actions = []
         split_returns = []
@@ -128,13 +128,13 @@ class Experiment:
     seq_len: int = 1
     discount_rate: float = 0.5
     epilison: float = 0.2
-    batch_size: int = 16
+    batch_size: int = 1
 
     def __post_init__(self):
-        env = RandomWalkEnv()
+        self.env = DiscreteTennis(TennisBehaviorShotRewardOnly(perfect_system=True))
         self.pi = Agent(
-            1,
-            env.action_space.n,  # type: ignore
+            self.env.observation_space.shape[0],
+            self.env.action_space.n,  # type: ignore
             self.seq_len,
             self.epilison,
             self.discount_rate,
@@ -143,9 +143,9 @@ class Experiment:
     def run(
         self, n_episodes: int, update: bool, starting_epsilon: float
     ) -> tuple[list[float], list[tuple[float, float]]]:
-        # env = gym.make("MountainCar-v0")
-        env = RandomWalkEnv()
+        self.env.reset()
 
+        # Collect data, train after collecting batch_size episodes
         hists = []
         returns = []
         losses = []
@@ -154,12 +154,13 @@ class Experiment:
             if (ep + 1) % (n_episodes // 2) == 0:
                 self.pi.epilison /= 2
                 pass
-            s, _ = env.reset()
+            s, _ = self.env.reset()
             hist = [[0, 0.0, False, *s]]  # a, r, done, s
             ep_return = 0.0
             while True:
                 a = self.pi(hist)
-                s, r, done, term, *_ = env.step(a)
+                s, r, done, term, *_ = self.env.step(a)
+                self.env.render()
                 ep_return += r
                 done = done or term
                 hist.append([a, r, done, *s])
@@ -167,7 +168,7 @@ class Experiment:
                     hists.append(hist)
                     returns.append(ep_return)
                     break
-            s = env.reset()
+            s = self.env.reset()
             if len(hists) >= self.batch_size:
                 if update:
                     losses.append(self.pi.update(hists))
@@ -175,9 +176,11 @@ class Experiment:
         return returns, losses
 
     def train(self, n_episodes: int) -> tuple[list[float], list[tuple[float, float]]]:
+        self.env._render_view = False
         return self.run(n_episodes, True, self.epilison)
 
     def eval(self, n_episodes: int) -> tuple[list[float], list[tuple[float, float]]]:
+        self.env._render_view = True
         return self.run(n_episodes, False, 0.0)
 
     @staticmethod
@@ -195,5 +198,5 @@ if __name__ == "__main__":
     exp.visualize(returns)
     exp.visualize([val for val, _ in losses])
     exp.visualize([pi for _, pi in losses])
-    # returns = exp.eval(100)
-    # exp.visualize(returns)
+    returns, _ = exp.eval(5)
+    exp.visualize(returns)

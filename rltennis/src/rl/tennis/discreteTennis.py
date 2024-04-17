@@ -656,8 +656,8 @@ class DiscreteTennis(Env):
             # Draw elements on the canvas
             self._draw_elements_on_canvas()
 
-        # return the observation
-        return self._state
+        # return the observation and info dict
+        return self._state, {}
 
     def render(self, mode="human"):
         if self._render_view:
@@ -2690,9 +2690,9 @@ def main(argv):
         # Take a random action
         action = env.action_space.sample()
         # obs, reward, done, truncated, info = env.step(action)
-        _, r, done, _, _ = env.step(action)
+        s, r, done, _, _ = env.step(action)
         R += r
-        print(f"Reward: {r}, Total Reward: {R}          ", end="\r")
+        print(f"Reward: {r}, Total Reward: {R}\t\t\t", end="\r")
 
         # Render the game
         env.render()
