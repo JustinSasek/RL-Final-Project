@@ -139,7 +139,7 @@ class MultiHeadAttention(nn.Module):
         self.Q = FC(config)
         # self.K = FC(config)
         self.K = deepcopy(self.Q)
-        
+
         self.V = FC(config)
         self.V.fc.weight.data = torch.eye(config.d_model)
         self.V.fc.bias.data.zero_()

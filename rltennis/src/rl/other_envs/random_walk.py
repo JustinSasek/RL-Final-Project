@@ -1,6 +1,7 @@
 import gym
-from gym import spaces
 import numpy as np
+from gym import spaces
+
 
 class RandomWalkEnv(gym.Env):
     def __init__(self, num_states=10):
@@ -27,7 +28,7 @@ class RandomWalkEnv(gym.Env):
             if action == 0:  # Move left
                 self.state = max(0, self.state - 1)
                 reward = -1
-            else: # Move right
+            else:  # Move right
                 self.state += 1
                 reward = 1
         else:
@@ -45,9 +46,10 @@ class RandomWalkEnv(gym.Env):
 
         return np.array([self.state]), reward, done, self.count >= 50, {}
 
-    def render(self, mode='human'):
+    def render(self, mode="human"):
         # Not implemented for this simple environment
         pass
+
 
 if __name__ == "__main__":
     for ep in range(100):
@@ -62,7 +64,7 @@ if __name__ == "__main__":
             while not done and not term:
                 s, r, done, term, _ = env.step(0)
                 R += r
-                
+
         else:
             while not done and not term:
                 s, r, done, term, _ = env.step(1)

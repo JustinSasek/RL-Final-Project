@@ -1,9 +1,10 @@
 from dataclasses import field
 
 import torch
-from .util import ModelInterface, nn_dataclass
-from .transformer import Transformer
 from torch import nn
+
+from .transformer import Transformer
+from .util import ModelInterface, nn_dataclass
 
 
 @nn_dataclass
