@@ -18,4 +18,5 @@ setup(
         "matplotlib",
         "wandb",
     ],
+    package_data={"rl": ["py.typed"]},
 )
