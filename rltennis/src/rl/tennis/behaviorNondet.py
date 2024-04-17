@@ -36,7 +36,8 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
     designated places in the court.
     """
 
-    def __init__(self, seed=20):
+    def __init__(self, seed=20, perfect_system=False):
+        self.perfect_system = perfect_system
         # Player and system positions snap to a grid with specified cell size.
         self.cell_x = 0.125
         self.cell_y = 0.125
@@ -454,6 +455,10 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
             else DiscreteTennis.SYSTEM
         )
 
+        if self.perfect_system and actor == DiscreteTennis.PLAYER:
+            noise = self.random.uniform(-0.1, 0.1)
+            return peer_position[0] + noise, peer_position[1], ball_owner
+
         if (
             actor == DiscreteTennis.PLAYER
             and self.system_2x_displace
@@ -497,3 +502,14 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
         return self._shot_target_by_stretch(
             actor, hitter_at, peer_position, is_difficult, ball_owner
         )
+
+
+class TennisBehaviorShotRewardOnly(SimpleDiscreteTennisBehavior):
+    REWARD_MAP = {
+        DiscreteTennis.ACTIVITY_SYSTEM_INVALID_SHOT: 0,
+        DiscreteTennis.ACTIVITY_SYSTEM_MISS: 0,
+        DiscreteTennis.ACTIVITY_SYSTEM_SHOT: 0,
+        DiscreteTennis.ACTIVITY_PLAYER_INVALID_SHOT: 0,
+        DiscreteTennis.ACTIVITY_PLAYER_MISS: 0,
+        DiscreteTennis.ACTIVITY_PLAYER_SHOT: 1,
+    }

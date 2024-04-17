@@ -591,8 +591,8 @@ class DiscreteTennis(Env):
                     * (state - threshold[low_index])
                 )
             )
-        else:
-            raise Exception("Invalid state position " + str(state))
+        # else:
+            # raise Exception("Invalid state position " + str(state))
         ret_value = mapper[low_index] + (
             percent * (mapper[high_index] - mapper[low_index])
         )
@@ -2680,14 +2680,19 @@ class TennisState(TennisObservedState):
 
 
 def main(argv):
-    env = DiscreteTennis(TennisBehavior())
+    from rl.tennis.behaviorNondet import TennisBehaviorShotRewardOnly
+    env = DiscreteTennis(TennisBehaviorShotRewardOnly(perfect_system=True))
+    env._render_view = True
     env.reset()
+    R = 0
 
     while True:
         # Take a random action
         action = env.action_space.sample()
         # obs, reward, done, truncated, info = env.step(action)
-        _, _, done, _, _ = env.step(action)
+        _, r, done, _, _ = env.step(action)
+        R += r
+        print(f"Reward: {r}, Total Reward: {R}          ", end="\r")
 
         # Render the game
         env.render()
