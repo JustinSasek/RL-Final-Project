@@ -8,7 +8,7 @@ import torch
 from matplotlib import pyplot as plt
 from rl.models import SingleVectorWrapper, Transformer
 from rl.other_envs.random_walk import RandomWalkEnv
-from rl.tennis.behaviorNondet import TennisBehaviorShotRewardOnly
+from rl.tennis.behaviorLearnable import TennisBehaviorShotRewardOnly
 from rl.tennis.discreteTennis import DiscreteTennis
 from tqdm import tqdm  # type: ignore
 
@@ -59,20 +59,13 @@ class Agent:
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Finds returns and aligns tensors for training."""
         hist_tensor = torch.tensor(
-            hist, dtype=torch.float64
+            hist, dtype=torch.float32
         )  # boost precision for discounting
-        rewards = hist_tensor[..., 1].clone()
+        returns = hist_tensor[..., 1].clone()
         actions = hist_tensor[..., 0].to(torch.int64)
-        discounts = self.discount_rate ** torch.arange(
-            rewards.shape[-1], dtype=torch.float64
-        )
-        rewards *= discounts
-        returns = torch.cumsum(rewards.flip(-1), dim=-1).flip(-1)
-        returns /= discounts
 
-        # convert to float32
-        returns = returns.to(torch.float32)
-        hist_tensor = hist_tensor.to(torch.float32)
+        for i in range(len(hist) - 2, -1, -1):
+            returns[i] = hist_tensor[i, 1] + self.discount_rate * returns[i + 1]
 
         # shift tensors
         returns = returns[..., 1:]
@@ -125,6 +118,9 @@ class Agent:
         deltas = deltas.detach()
         pi_loss = -torch.mean(deltas * torch.log(pi_taken))
         loss = value_loss + 0.5 * pi_loss
+
+        if torch.isnan(loss):
+            raise ValueError("NAN Loss")
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -216,7 +212,7 @@ class Experiment:
 
 if __name__ == "__main__":
     exp = Experiment()
-    returns, losses = exp.train(200, verbose=False)
+    returns, losses = exp.train(400, verbose=False)
     exp.visualize(returns)
     exp.visualize([val for val, _ in losses])
     exp.visualize([pi for _, pi in losses])

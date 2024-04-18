@@ -4,6 +4,7 @@ import random
 from math import sqrt
 from typing import Optional as Op
 
+import numpy as np
 from rl.tennis.discreteTennis import (
     DiscreteTennis,
     RenderEvent,
@@ -208,7 +209,7 @@ class LearnableTennisBehavior(TennisBehavior):
 
         return True
 
-    def next_system_action(self, fire:bool, serve:bool, env:DiscreteTennis):
+    def next_system_action(self, fire: bool, serve: bool, env: DiscreteTennis):
         """
         Take the next action on behalf of the system. This method updates the environment as a result of taking
         the step. Additionally, push any renderable events to enable visualization if needed. The method assumes
@@ -713,9 +714,6 @@ class Linear1xProgression(LinearProgression):
 
     NAME = "linear1x"
 
-    def __init__(self, receiver, start_at, nav_dir, step_delta, estimated_steps, upto):
-        super().__init__(receiver, start_at, nav_dir, step_delta, estimated_steps, upto)
-
     def _get_name(self):
         return self.NAME
 
@@ -745,9 +743,6 @@ class Linear1xProgression(LinearProgression):
         self._shot_at[0] = next_x
         self._shot_at[1] = next_y
         return True
-
-    def __repr__(self):
-        return super().__repr__()
 
 
 class LinearRandom1xProgression(LinearProgression):
@@ -913,3 +908,65 @@ class LinearRandom1xEnd2xProgression(LinearProgression):
 
     def __repr__(self):
         return super().__repr__()
+
+
+class ExtremeProgression(Linear1xProgression):
+    """
+    Always shoots as far right or left as possible
+    """
+
+    NAME = "extreme"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dir: int = 1  # np.random.choice([-1, 1]) # type: ignore
+
+    def _next_pos(self) -> bool:
+        """
+        Get the position of next shot for the receiver represented in this shot sequence if such shot is possible.
+
+        :return True if next shot is possible. The _shot_at is positioned to the next shot's position.
+        """
+
+        next_x = self._shot_at[0] + abs(self._step_delta[0]) * self.dir * 2
+        next_y = self._shot_at[1] + abs(self._step_delta[1]) * self.dir * 2
+
+        if not self._is_out_of_bound(next_x, next_y):
+            self._shot_at[0] = next_x
+            self._shot_at[1] = next_y
+
+        return True
+
+
+class TennisBehaviorShotRewardOnly(LearnableTennisBehavior):
+    REWARD_MAP = {
+        DiscreteTennis.ACTIVITY_SYSTEM_INVALID_SHOT: 0,
+        DiscreteTennis.ACTIVITY_SYSTEM_MISS: 0,
+        DiscreteTennis.ACTIVITY_SYSTEM_SHOT: 0,
+        DiscreteTennis.ACTIVITY_PLAYER_INVALID_SHOT: 0,
+        DiscreteTennis.ACTIVITY_PLAYER_MISS: 0,
+        DiscreteTennis.ACTIVITY_PLAYER_SHOT: 1,
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.difficulty = 1.0
+        self.start()
+
+    def start(self):
+        super().start()
+        self.system_shot_seq_factory = ShotSequenceFactory()
+        self.system_shot_seq_factory.register_seq(
+            ExtremeProgression.NAME,
+            lambda behavior, receiver, start_at, nav_dir, step_delta, count_step, upto: ExtremeProgression(
+                receiver, start_at, nav_dir, step_delta, count_step, upto
+            ),
+        )
+        self.player_shot_seq_factory = ShotSequenceFactory.get_default_factory()
+
+    def shot_target(self, hitter, hitter_at, receiver_at):
+        if hitter == DiscreteTennis.PLAYER:
+            self._shot_seq_factory = self.player_shot_seq_factory
+        else:
+            self._shot_seq_factory = self.system_shot_seq_factory
+        return super().shot_target(hitter, hitter_at, receiver_at)

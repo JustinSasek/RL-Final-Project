@@ -445,8 +445,8 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
         to_left = bool(self.random.getrandbits(1))
         to_front = bool(self.random.getrandbits(1))
 
-        ball_x:float = peer_position[0]
-        ball_y:float = peer_position[1]
+        ball_x: float = peer_position[0]
+        ball_y: float = peer_position[1]
 
         ball_x = (ball_x - target_x) if to_left else (ball_x + target_x)
         ball_x = max(0.0, min(ball_x, 1.0))
@@ -522,18 +522,3 @@ class SimpleDiscreteTennisBehavior(TennisBehavior):
         return self._shot_target_by_stretch(
             actor, hitter_at, peer_position, is_difficult, ball_owner
         )
-
-
-class TennisBehaviorShotRewardOnly(SimpleDiscreteTennisBehavior):
-    def __init__(self, *args, **kwargs):
-        kwargs["perfect_system"] = True
-        super().__init__(*args, **kwargs)
-
-    REWARD_MAP = {
-        DiscreteTennis.ACTIVITY_SYSTEM_INVALID_SHOT: 0,
-        DiscreteTennis.ACTIVITY_SYSTEM_MISS: 0,
-        DiscreteTennis.ACTIVITY_SYSTEM_SHOT: 0,
-        DiscreteTennis.ACTIVITY_PLAYER_INVALID_SHOT: 0,
-        DiscreteTennis.ACTIVITY_PLAYER_MISS: 0,
-        DiscreteTennis.ACTIVITY_PLAYER_SHOT: 1,
-    }
