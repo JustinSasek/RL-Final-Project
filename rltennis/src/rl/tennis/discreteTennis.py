@@ -432,6 +432,7 @@ class DiscreteTennis(Env):
         self._set_server(self.SYSTEM)
         self._set_score(0, 0, 0, 0, 0, 0)
         self._set_current_game_result(0)
+        self._behavior.reset()
 
         # Counter of number of steps that have occured in the current set.
         self._game_step_count = 0
@@ -592,7 +593,7 @@ class DiscreteTennis(Env):
                 )
             )
         # else:
-            # raise Exception("Invalid state position " + str(state))
+        # raise Exception("Invalid state position " + str(state))
         ret_value = mapper[low_index] + (
             percent * (mapper[high_index] - mapper[low_index])
         )
@@ -2308,6 +2309,12 @@ class TennisBehavior:
         """
         return 0
 
+    def reset(self):
+        """
+        Reset the behavior to its initial state.
+        """
+        pass
+
 
 class TennisStats:
     def game_result(
@@ -2681,6 +2688,7 @@ class TennisState(TennisObservedState):
 
 def main(argv):
     from rl.tennis.behaviorNondet import TennisBehaviorShotRewardOnly
+
     env = DiscreteTennis(TennisBehaviorShotRewardOnly(perfect_system=True))
     env._render_view = True
     env.reset()

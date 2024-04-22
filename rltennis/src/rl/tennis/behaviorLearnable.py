@@ -1,6 +1,7 @@
 # Refer: https://blog.paperspace.com/creating-custom-environments-openai-gym/
 import logging
 import random
+from functools import partial
 from math import sqrt
 from typing import Optional as Op
 
@@ -99,6 +100,7 @@ class LearnableTennisBehavior(TennisBehavior):
     def on_end_game(self):
         self._actor_mgmt[DiscreteTennis.PLAYER].clear_game()
         self._actor_mgmt[DiscreteTennis.SYSTEM].clear_game()
+        self.time_step = -1
 
     def start(self):
         """
@@ -111,6 +113,7 @@ class LearnableTennisBehavior(TennisBehavior):
         self.system_reach = sqrt(
             self.system_x * self.system_x + self.system_y * self.system_y
         )
+        self.time_step = -1
 
     def is_player_reachable(self, ball_position, player_position):
         """
@@ -328,6 +331,7 @@ class LearnableTennisBehavior(TennisBehavior):
         :param receiver_at Tuple (x, y) of the peer's current position at the time actor fires the shot.
         :return Target ball position where the shot will end (x, y, owner)
         """
+        self.time_step += 1
         receiver = (
             DiscreteTennis.PLAYER
             if hitter == DiscreteTennis.SYSTEM
@@ -345,7 +349,7 @@ class LearnableTennisBehavior(TennisBehavior):
                         extra=self._LOG_TAG,
                     )
 
-            shot_at = seq.shot_target(hitter_at, receiver_at)
+            shot_at = seq.shot_target(hitter_at, receiver_at, self.time_step)
             if shot_at is not None:
                 return shot_at
             else:
@@ -382,7 +386,7 @@ class ShotSequence:
     Interface representing a sequence of shot targets for a specific entity based on a specific learnable strategy.
     """
 
-    def shot_target(self, hitter_at, receiver_at):
+    def shot_target(self, hitter_at, receiver_at, time_step):
         """
         Determine the ball target position where shot hitter hits the shot at the receiver represented
         in this sequence with the shot hitter and receiver entities at the specified positions.
@@ -652,7 +656,7 @@ class LinearProgression(ShotSequence):
         else:
             self._history = None
 
-    def shot_target(self, hitter_at, receiver_at):
+    def shot_target(self, hitter_at, receiver_at, time_step):
         """
         Determine the ball target position where peer actor hits the shot at this actor with
         actor and peer entities at specified positions.
@@ -662,7 +666,7 @@ class LinearProgression(ShotSequence):
         :return Target ball position where the shot will end (x, y, receiver) if possible for this shot sequence
             else None
         """
-        if not self._next_pos():
+        if not self._next_pos(time_step):
             return None
         ret = (self._shot_at[0], self._shot_at[1], self._receiver)
         self._step_taken = self._step_taken + 1
@@ -670,7 +674,7 @@ class LinearProgression(ShotSequence):
             self._history.append(ret)
         return ret
 
-    def _next_pos(self):
+    def _next_pos(self, time_step):
         """
         Upto the _shot_at to the position of next shot for the receiver represented in this shot sequence
         if such shot is possible.
@@ -717,7 +721,7 @@ class Linear1xProgression(LinearProgression):
     def _get_name(self):
         return self.NAME
 
-    def _next_pos(self):
+    def _next_pos(self, time_step):
         """
         Get the position of next shot for the receiver represented in this shot sequence if such shot is possible.
 
@@ -736,7 +740,7 @@ class Linear1xProgression(LinearProgression):
                 self._forward = False
                 self._step_delta = [self._step_delta[0] * -1, self._step_delta[1] * -1]
                 self._upto = self._start_at
-                return self._next_pos()
+                return self._next_pos(time_step)
             else:
                 return False  # End of progression.
 
@@ -765,7 +769,7 @@ class LinearRandom1xProgression(LinearProgression):
     def _get_name(self):
         return self.NAME
 
-    def _next_pos(self):
+    def _next_pos(self, time_step):
         """
         Get the position of next shot for the receiver represented in this shot sequence if such shot is possible.
 
@@ -801,7 +805,7 @@ class LinearRandom1xProgression(LinearProgression):
                 self._forward = False
                 self._step_delta = [self._step_delta[0] * -1, self._step_delta[1] * -1]
                 self._upto = self._start_at
-                return self._next_pos()
+                return self._next_pos(time_step)
             else:
                 return False  # End of progression.
 
@@ -843,7 +847,7 @@ class LinearRandom1xEnd2xProgression(LinearProgression):
     def _get_name(self):
         return self.NAME
 
-    def _next_pos(self):
+    def _next_pos(self, time_step):
         """
         Get the position of next shot for the receiver represented in this shot sequence if such shot is possible.
 
@@ -898,7 +902,7 @@ class LinearRandom1xEnd2xProgression(LinearProgression):
                 self._forward = False
                 self._step_delta = [self._step_delta[0] * -1, self._step_delta[1] * -1]
                 self._upto = self._start_at
-                return self._next_pos()
+                return self._next_pos(time_step)
             else:
                 return False  # End of progression.
 
@@ -917,22 +921,28 @@ class ExtremeProgression(Linear1xProgression):
 
     NAME = "extreme"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, direction: int = 1, **kwargs):
         super().__init__(*args, **kwargs)
-        self.dir: int = 1  # np.random.choice([-1, 1]) # type: ignore
+        self.direction: int = direction
 
-    def _next_pos(self) -> bool:
+    def _next_pos(self, time_step) -> bool:
         """
         Get the position of next shot for the receiver represented in this shot sequence if such shot is possible.
 
         :return True if next shot is possible. The _shot_at is positioned to the next shot's position.
         """
-
-        next_x = self._shot_at[0] + abs(self._step_delta[0]) * self.dir * 2
-        next_y = self._shot_at[1] + abs(self._step_delta[1]) * self.dir * 2
-
-        if not self._is_out_of_bound(next_x, next_y):
+        # Adjust x
+        mult = 1 if time_step == 0 else 2  # only move 1x on first step, then get harder
+        next_x = self._shot_at[0] + self.direction * 0.125 * mult
+        if self._is_out_of_bound(next_x, self._shot_at[1]):
+            # TODO add randomness
+            pass
+        else:
             self._shot_at[0] = next_x
+
+        # Adjust y
+        next_y = self._shot_at[1] + self._step_delta[1]
+        if not self._is_out_of_bound(self._shot_at[0], next_y):
             self._shot_at[1] = next_y
 
         return True
@@ -951,18 +961,26 @@ class TennisBehaviorShotRewardOnly(LearnableTennisBehavior):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.difficulty = 1.0
-        self.start()
+        self.player_shot_seq_factory = ShotSequenceFactory.get_default_factory()
+        self.direction = self.random.choice([-1, 1])
+        self.reset()
 
-    def start(self):
-        super().start()
+    def reset(self):
+        super().reset()
+        self.direction *= -1
         self.system_shot_seq_factory = ShotSequenceFactory()
         self.system_shot_seq_factory.register_seq(
             ExtremeProgression.NAME,
             lambda behavior, receiver, start_at, nav_dir, step_delta, count_step, upto: ExtremeProgression(
-                receiver, start_at, nav_dir, step_delta, count_step, upto
+                receiver,
+                start_at,
+                nav_dir,
+                step_delta,
+                count_step,
+                upto,
+                direction=self.direction,
             ),
         )
-        self.player_shot_seq_factory = ShotSequenceFactory.get_default_factory()
 
     def shot_target(self, hitter, hitter_at, receiver_at):
         if hitter == DiscreteTennis.PLAYER:
