@@ -31,23 +31,23 @@ class Agent:
         self.seq_len = seq_len
         self.epilison = epilison
         self.discount_rate = discount_rate
-        # transformer = Transformer(
-        #     N=4, d_model=32, d_ff=64, h=4, max_len=seq_len, dropout=0.1
-        # )
-        # self.model = SingleVectorWrapper(
-        #     transformer=transformer,
-        #     input_size=state_size + 3,  # action, reward, done, state
-        #     output_size=action_size + 1,  # value, action1, action2, ...
-        # )
-        # # optimistic initialization
+        transformer = Transformer(
+            N=1, d_model=16, d_ff=32, h=2, max_len=seq_len, dropout=0.1
+        )
+        self.model = SingleVectorWrapper(
+            transformer=transformer,
+            input_size=state_size + 3,  # action, reward, done, state
+            output_size=action_size + 1,  # value, action1, action2, ...
+        )
+        # optimistic initialization
         # self.model.fc_out.weight.data.zero_()
         # self.model.fc_out.bias.data.fill_(5)
 
-        self.model = torch.nn.Sequential(
-            torch.nn.Linear(state_size + 3, 32),
-            torch.nn.ReLU(),
-            torch.nn.Linear(32, action_size + 1),
-        )
+        # self.model = torch.nn.Sequential(
+        #     torch.nn.Linear(state_size + 3, 32),
+        #     torch.nn.ReLU(),
+        #     torch.nn.Linear(32, action_size + 1),
+        # )
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
         self.scheduler = None
         # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 2, 0.5)
@@ -138,9 +138,13 @@ class Agent:
 
         self.optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=0.5)
         self.optimizer.step()
         if self.scheduler:
             self.scheduler.step()
+            
+        if torch.isnan(self.model._modules["fc_out"].weight).any():
+            raise ValueError("NAN Weights")
 
         return value_loss.item(), pi_loss.item()
 
@@ -239,7 +243,7 @@ if __name__ == "__main__":
     # exp.load("model.pt")
 
     try:
-        returns, losses = exp.train(5000, verbose=False)
+        returns, losses = exp.train(1000, verbose=False)
         exp.visualize(returns)
         exp.visualize([val for val, _ in losses])
         exp.visualize([pi for _, pi in losses])
