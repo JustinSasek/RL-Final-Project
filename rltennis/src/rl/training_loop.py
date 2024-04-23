@@ -149,7 +149,7 @@ class Experiment:
     batch_size: int = 4
     horizon: int = 64
     max_game_length: int = 4
-    has_mem = True
+    has_mem: bool = True
 
     def __post_init__(self):
         self.env = DiscreteTennis(TennisBehaviorShotRewardOnly())
@@ -240,17 +240,10 @@ class Experiment:
 
 
 if __name__ == "__main__":
-    exp = Experiment()
     # exp.load("model.pt")
-
-    try:
-        returns, losses = exp.train(1000, verbose=True)
+    for seq_len, has_mem in [(2, True), (1, False)]:
+        exp = Experiment(seq_len=seq_len, has_mem=has_mem)
+        returns, losses = exp.train(1000, verbose=False)
         exp.visualize(returns)
         exp.visualize([val for val, _ in losses])
         exp.visualize([pi for _, pi in losses])
-    except KeyboardInterrupt:
-        pass
-    exp.save("model.pt")
-
-    returns, _ = exp.eval(5)
-    exp.visualize(returns)
