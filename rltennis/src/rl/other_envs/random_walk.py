@@ -14,37 +14,39 @@ class RandomWalkEnv(gym.Env):
 
     def reset(self):
         self.count = 0
-        self.goal = np.random.randint(0, self.num_states - 1)
-        self.state = np.random.randint(0, self.num_states - 1)
-        while self.state == self.goal:
-            self.state = np.random.randint(0, self.num_states - 1)
-        return np.array([self.state]), None
+        self.direction = np.random.randint(0, 2)
+        # self.goal = np.random.randint(0, self.num_states - 1)
+        # self.state = np.random.randint(0, self.num_states - 1)
+        # while self.state == self.goal:
+        #     self.state = np.random.randint(0, self.num_states - 1)
+        return np.array([0]), None
 
     def step(self, action):
         self.count += 1
         assert self.action_space.contains(action)
 
-        if self.state < self.goal:
-            if action == 0:  # Move left
-                self.state = max(0, self.state - 1)
-                reward = -1
-            else:  # Move right
-                self.state += 1
-                reward = 1
-        else:
-            if action == 0:
-                self.state -= 1
-                reward = 1
-            else:
-                self.state = min(self.num_states - 1, self.state + 1)
-                reward = -1
-
+        # reward = 0
+        # if self.state < self.goal:
+        #     if action == 0:  # Move left
+        #         self.state = max(0, self.state - 1)
+        #         reward = -1
+        #     else:  # Move right
+        #         self.state += 1
+        # else:
+        #     if action == 0:
+        #         self.state -= 1
+        #     else:
+        #         self.state = min(self.num_states - 1, self.state + 1)
+        #         reward = -1
+                
+        # done = False
+        # if self.state == self.goal:
+        #     reward = 10
+        #     done = True
         done = False
-        if self.state == self.goal:
-            reward = 10
-            done = True
+        reward = action == self.direction
 
-        return np.array([self.state]), reward, done, self.count >= 50, {}
+        return np.array([0]), reward, done, self.count >= 50, {}
 
     def render(self, mode="human"):
         # Not implemented for this simple environment
