@@ -954,13 +954,14 @@ class TennisBehaviorShotRewardOnly(LearnableTennisBehavior):
         DiscreteTennis.ACTIVITY_SYSTEM_MISS: 0,
         DiscreteTennis.ACTIVITY_SYSTEM_SHOT: 0,
         DiscreteTennis.ACTIVITY_PLAYER_INVALID_SHOT: 0,
-        DiscreteTennis.ACTIVITY_PLAYER_MISS: 0,
-        DiscreteTennis.ACTIVITY_PLAYER_SHOT: 1,
+        DiscreteTennis.ACTIVITY_PLAYER_MISS: -1,
+        DiscreteTennis.ACTIVITY_PLAYER_SHOT: 0,
     }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.difficulty = 1.0
+        # self.difficulty = 1.0
+        self.difficulty = 0.8
         self.player_shot_seq_factory = ShotSequenceFactory.get_default_factory()
         self.direction = self.random.choice([-1, 1])
         self.reset()

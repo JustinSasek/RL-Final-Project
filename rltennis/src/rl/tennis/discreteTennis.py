@@ -265,7 +265,9 @@ class DiscreteTennis(Env):
 
     # Maximum set-score
     MATCHSCORE_MAXIMUM = 0.2
-
+    
+    MAX_GAME_LENGTH = None
+    
     GAMESTATUS_CONTINUE = 0
 
     GAMESTATUS_NEWGAME = 1
@@ -771,6 +773,12 @@ class DiscreteTennis(Env):
                 fire_actor = self.SYSTEM if curr_even_turn else self.PLAYER
 
         self._game_step_count = self._game_step_count + 1
+        
+        if self.MAX_GAME_LENGTH and self._game_step_count > self.MAX_GAME_LENGTH:
+            self._update_score_on_miss(self.SYSTEM)
+            assert self._game_step_count == 0
+            assert self._state[-1] == 1
+            return self._state, 0, False, False, {}
 
         # User must have already rendered the events from previous step by now so all past events must be cleared
         # before this step proceeds.

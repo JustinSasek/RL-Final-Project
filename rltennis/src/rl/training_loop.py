@@ -1,3 +1,4 @@
+import random
 from collections import Counter
 from dataclasses import dataclass
 
@@ -11,6 +12,10 @@ from rl.other_envs.random_walk import RandomWalkEnv
 from rl.tennis.behaviorLearnable import TennisBehaviorShotRewardOnly
 from rl.tennis.discreteTennis import DiscreteTennis
 from tqdm import tqdm  # type: ignore
+
+torch.manual_seed(42)
+np.random.seed(42)
+random.seed(42)
 
 
 class Agent:
@@ -27,7 +32,7 @@ class Agent:
         self.epilison = epilison
         self.discount_rate = discount_rate
         transformer = Transformer(
-            N=1, d_model=16, d_ff=32, h=4, max_len=seq_len, dropout=0.1
+            N=1, d_model=64, d_ff=128, h=4, max_len=seq_len, dropout=0.1
         )
         self.model = SingleVectorWrapper(
             transformer=transformer,
@@ -37,10 +42,10 @@ class Agent:
         # optimistic initialization
         self.model.fc_out.weight.data.zero_()
         self.model.fc_out.bias.data.fill_(5)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=5e-2)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-2)
         self.scheduler = None
-        # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 10, 0.75)
-        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, 10)
+        # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 2, 0.5)
+        # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, 10)
 
     def __call__(self, hist: list[list[float]]) -> int:
         if np.random.rand() < self.epilison:
@@ -136,13 +141,15 @@ class Agent:
 @dataclass
 class Experiment:
     seq_len: int = 2
-    discount_rate: float = 0.5
-    epilison: float = 0.0
+    discount_rate: float = 0.9
+    epilison: float = 0.1
     batch_size: int = 64
-    horizon: int = 1000
+    horizon: int = 1000000
+    max_game_length: int = 8
 
     def __post_init__(self):
         self.env = DiscreteTennis(TennisBehaviorShotRewardOnly())
+        self.env.MAX_GAME_LENGTH = self.max_game_length
         self.pi = Agent(
             self.env.observation_space.shape[0],
             self.env.action_space.n,  # type: ignore
@@ -174,7 +181,6 @@ class Experiment:
             hist = [[0, 0.0, False, *s]]  # a, r, done, s
             ep_return = 0.0
             t = 0
-            # temp = 0
             while True:
                 a = self.pi(hist)
                 c[a] += 1
@@ -183,11 +189,6 @@ class Experiment:
                 ep_return += r
                 done = done or term
                 game_done = s[-1]  # as opposed to episode done
-                # if game_done:
-                # temp += 1
-                #     if temp == 2:
-                #         hists.append(hist)
-                #         self.pi.update(hists)
                 hist.append([a, r, game_done, *s])
                 t += 1
                 if done or t >= self.horizon:
@@ -215,6 +216,9 @@ class Experiment:
         self.env._render_view = True
         return self.run(n_episodes, False, 0.0, verbose)
 
+    def save(self, path: str):
+        torch.save(self.pi.model.state_dict(), path)
+
     @staticmethod
     def visualize(returns: list[float]):
         sns.lineplot(x=range(len(returns)), y=returns)
@@ -225,10 +229,14 @@ class Experiment:
 if __name__ == "__main__":
     exp = Experiment()
 
-    returns, losses = exp.train(5000, verbose=True)
-    exp.visualize(returns)
-    exp.visualize([val for val, _ in losses])
-    exp.visualize([pi for _, pi in losses])
+    try:
+        returns, losses = exp.train(300, verbose=True)
+        exp.visualize(returns)
+        exp.visualize([val for val, _ in losses])
+        exp.visualize([pi for _, pi in losses])
+    except KeyboardInterrupt:
+        pass
+    exp.save("model.pt")
 
     returns, _ = exp.eval(5)
     exp.visualize(returns)
