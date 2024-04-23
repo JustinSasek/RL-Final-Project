@@ -143,8 +143,8 @@ class Agent:
 
 @dataclass
 class Experiment:
-    seq_len: int = 1
-    discount_rate: float = 0.0
+    seq_len: int = 2
+    discount_rate: float = 0.99
     epilison: float = 0.1
     batch_size: int = 4
     horizon: int = 64
@@ -191,8 +191,8 @@ class Experiment:
                 c[a] += 1
                 s, r, done, term, *_ = self.env.step(a)
                 self.env.render()
-                s, r, done, term, *_ = self.env.step(a)
-                self.env.render()
+                # s, r, done, term, *_ = self.env.step(a)
+                # self.env.render()
                 ep_return += r
                 done = done or term
                 game_done = s[-1]  # as opposed to episode done
