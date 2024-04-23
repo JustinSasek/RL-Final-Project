@@ -954,8 +954,8 @@ class TennisBehaviorShotRewardOnly(LearnableTennisBehavior):
         DiscreteTennis.ACTIVITY_SYSTEM_MISS: 0,
         DiscreteTennis.ACTIVITY_SYSTEM_SHOT: 0,
         DiscreteTennis.ACTIVITY_PLAYER_INVALID_SHOT: 0,
-        DiscreteTennis.ACTIVITY_PLAYER_MISS: -1,
-        DiscreteTennis.ACTIVITY_PLAYER_SHOT: 0,
+        DiscreteTennis.ACTIVITY_PLAYER_MISS: 0,
+        DiscreteTennis.ACTIVITY_PLAYER_SHOT: 1,
     }
 
     def __init__(self, *args, **kwargs):
@@ -963,12 +963,11 @@ class TennisBehaviorShotRewardOnly(LearnableTennisBehavior):
         # self.difficulty = 1.0
         self.difficulty = 0.8
         self.player_shot_seq_factory = ShotSequenceFactory.get_default_factory()
-        self.direction = self.random.choice([-1, 1])
         self.reset()
 
     def reset(self):
         super().reset()
-        self.direction *= -1
+        self.direction = np.random.choice([-1, 1])
         self.system_shot_seq_factory = ShotSequenceFactory()
         self.system_shot_seq_factory.register_seq(
             ExtremeProgression.NAME,
@@ -989,3 +988,18 @@ class TennisBehaviorShotRewardOnly(LearnableTennisBehavior):
         else:
             self._shot_seq_factory = self.system_shot_seq_factory
         return super().shot_target(hitter, hitter_at, receiver_at)
+
+    def is_player_reachable(self, ball_position, player_position):
+        delta_x = abs(ball_position[0] - player_position[0])
+        delta_y = abs(ball_position[1] - player_position[1])
+        distance = sqrt(delta_x * delta_x + delta_y * delta_y)
+
+        if distance > 0.15:
+            return False
+
+        miss_prob = self._actor_mgmt[DiscreteTennis.PLAYER]._miss_probability
+        if miss_prob > 0.0:
+            miss = self.random.random()
+            return miss > miss_prob
+
+        return True

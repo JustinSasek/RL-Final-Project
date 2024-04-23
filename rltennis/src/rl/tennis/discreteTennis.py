@@ -133,6 +133,9 @@ class DiscreteTennis(Env):
     # Who is currently serving PLAYER/SYSTEM
     STATE_SERVE = 10
 
+    # System always serve?
+    SYSTEM_ALWAYS_SERVE = False
+
     # Player's score within current game.
     STATE_GAMESCORE_PLAYER = 11
 
@@ -761,6 +764,8 @@ class DiscreteTennis(Env):
                 0
             )  # New game continues until result is known subsequently.
             serving_actor = TennisObservedState.get_next_server(self._state)
+            if self.SYSTEM_ALWAYS_SERVE:
+                serving_actor = self.SYSTEM
             self._set_server(serving_actor)
 
         fire_actor = serving_actor  # Actor to fire the shot in this step - player and sytem take turns to fire

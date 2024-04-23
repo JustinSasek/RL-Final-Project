@@ -32,17 +32,15 @@ class Agent:
         self.epilison = epilison
         self.discount_rate = discount_rate
         transformer = Transformer(
-            N=1, d_model=64, d_ff=128, h=4, max_len=seq_len, dropout=0.1
+            N=1, d_model=16, d_ff=32, h=2, max_len=seq_len, dropout=0.1
         )
         self.model = SingleVectorWrapper(
             transformer=transformer,
             input_size=state_size + 3,  # action, reward, done, state
-            output_size=action_size + 1,  # value, action1, action2, .
+            output_size=action_size + 1,  # value, action1, action2, ...
         )
         # optimistic initialization
-        self.model.fc_out.weight.data.zero_()
-        self.model.fc_out.bias.data.fill_(5)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-2)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
         self.scheduler = None
         # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 2, 0.5)
         # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, 10)
@@ -111,10 +109,11 @@ class Agent:
             returns_list += split_returns
 
         hists_tensor = torch.stack(hists_list)
-        actions = torch.stack(actions_list)
-        returns = torch.stack(returns_list)
+        actions = torch.stack(actions_list)[..., -1]  # only use last timestep
+        returns = torch.stack(returns_list)[..., -1]  # only use last timestep
 
         outputs: torch.Tensor = self.model(hists_tensor)
+        outputs = outputs[..., -1, :]  # only use last timestep
         values = outputs[..., 0]
         pis = outputs[..., 1:]
         pis = torch.nn.functional.softmax(pis, dim=-1)
@@ -131,25 +130,31 @@ class Agent:
 
         self.optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=0.5)
         self.optimizer.step()
         if self.scheduler:
             self.scheduler.step()
+
+        if torch.isnan(self.model._modules["fc_out"].weight).any():
+            raise ValueError("NAN Weights")
 
         return value_loss.item(), pi_loss.item()
 
 
 @dataclass
 class Experiment:
-    seq_len: int = 2
-    discount_rate: float = 0.9
+    seq_len: int = 1
+    discount_rate: float = 0.0
     epilison: float = 0.1
-    batch_size: int = 64
-    horizon: int = 1000000
-    max_game_length: int = 8
+    batch_size: int = 4
+    horizon: int = 64
+    max_game_length: int = 4
+    has_mem = True
 
     def __post_init__(self):
         self.env = DiscreteTennis(TennisBehaviorShotRewardOnly())
         self.env.MAX_GAME_LENGTH = self.max_game_length
+        self.SYSTEM_ALWAYS_SERVE = True
         self.pi = Agent(
             self.env.observation_space.shape[0],
             self.env.action_space.n,  # type: ignore
@@ -186,10 +191,15 @@ class Experiment:
                 c[a] += 1
                 s, r, done, term, *_ = self.env.step(a)
                 self.env.render()
+                s, r, done, term, *_ = self.env.step(a)
+                self.env.render()
                 ep_return += r
                 done = done or term
                 game_done = s[-1]  # as opposed to episode done
-                hist.append([a, r, game_done, *s])
+                if self.has_mem:
+                    hist.append([a, r, game_done, *s])
+                else:
+                    hist.append([0, 0.0, False, *s])
                 t += 1
                 if done or t >= self.horizon:
                     hists.append(hist)
@@ -219,6 +229,9 @@ class Experiment:
     def save(self, path: str):
         torch.save(self.pi.model.state_dict(), path)
 
+    def load(self, path: str):
+        self.pi.model.load_state_dict(torch.load(path))
+
     @staticmethod
     def visualize(returns: list[float]):
         sns.lineplot(x=range(len(returns)), y=returns)
@@ -228,9 +241,10 @@ class Experiment:
 
 if __name__ == "__main__":
     exp = Experiment()
+    # exp.load("model.pt")
 
     try:
-        returns, losses = exp.train(300, verbose=True)
+        returns, losses = exp.train(1000, verbose=True)
         exp.visualize(returns)
         exp.visualize([val for val, _ in losses])
         exp.visualize([pi for _, pi in losses])
