@@ -12,8 +12,8 @@ import torch
 from matplotlib import pyplot as plt
 from rl.models import SingleVectorWrapper, Transformer
 from rl.tennis.discreteTennisWrappers import *
-from tqdm import tqdm  # type: ignore
 from torch import nn
+from tqdm import tqdm  # type: ignore
 
 STATE_FILTER = [1, 0, 6, 5, 4, 17]
 # STATE_FILTER = range(18)
@@ -34,32 +34,28 @@ def already_ran(model_name: str, run_name: str, seed: int) -> bool:
 def save_returns(returns: list[float], model_name: str, run_name: str, seed: int):
     path = join(RESULTS_PATH, model_name, run_name, f"seed{seed}.csv")
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    if os.path.exists(path):
+        raise ValueError(f"File already exists: {path}")
     with open(path, "w") as f:
         f.write("Returns\n")
         f.write("\n".join(map(str, returns)))
-        
+
+
 class MemoryMLP(nn.Module):
     def __init__(self, input_size, seq_len, output_size, N, d_model):
         super().__init__()
         self.seq_len = seq_len
         self.mods = nn.ModuleList()
-        self.mods.add_module(
-            "fc0", nn.Linear(input_size * seq_len, d_model)
-        )
+        self.mods.add_module("fc0", nn.Linear(input_size * seq_len, d_model))
         self.mods.add_module("relu0", nn.LeakyReLU())
         self.mods.add_module("dropout0", nn.Dropout(p=0.1))
         for i in range(1, N):
-            self.mods.add_module(
-                f"fc{i}", nn.Linear(d_model, d_model)
-            )
+            self.mods.add_module(f"fc{i}", nn.Linear(d_model, d_model))
             self.mods.add_module(f"relu{i}", nn.LeakyReLU())
             self.mods.add_module(f"dropout{i}", nn.Dropout(p=0.1))
-        self.mods.add_module(
-            "fc_out", nn.Linear(d_model, output_size * seq_len)
-        )
-        
-        
-    def forward(self, x:torch.Tensor) -> torch.Tensor:
+        self.mods.add_module("fc_out", nn.Linear(d_model, output_size * seq_len))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         if x.shape[-2] != self.seq_len:
             missing = self.seq_len - x.shape[-2]
             x = torch.cat([torch.zeros_like(x[..., :missing, :]), x], dim=-2)
@@ -88,7 +84,9 @@ class Agent:
     def __post_init__(self):
         input_size = (self.state_size + 3) if self.has_mem else self.state_size
         if self.MLP:
-            self.model = MemoryMLP(input_size, self.seq_len, self.action_size + 1, self.N, self.d_model)
+            self.model = MemoryMLP(
+                input_size, self.seq_len, self.action_size + 1, self.N, self.d_model
+            )
         else:
             transformer = Transformer(
                 N=self.N,
@@ -127,9 +125,7 @@ class Agent:
         hist: list[list[float]],
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Finds returns and aligns tensors for training."""
-        hist_tensor = torch.tensor(
-            hist, dtype=torch.float32
-        )
+        hist_tensor = torch.tensor(hist, dtype=torch.float32)
         returns = hist_tensor[..., 1].clone()
         actions = hist_tensor[..., 0].to(torch.int64)
 
@@ -180,7 +176,7 @@ class Agent:
 
         if not self.has_mem:
             hists_tensor = hists_tensor[..., 3:]
-            
+
         outputs: torch.Tensor = self.model(hists_tensor)
         outputs = outputs[..., -1, :]  # only use last timestep
         values = outputs[..., 0]
@@ -257,8 +253,8 @@ class Experiment:
         self.pi.epilison = starting_epsilon
         c: Counter = Counter()
         for ep in tqdm(range(n_episodes), colour="green"):
+        # for ep in range(n_episodes):
             try:
-                # for ep in range(n_episodes):
                 if (ep + 1) % (n_episodes // 4) == 0:
                     self.pi.epilison /= 2
                     pass
@@ -288,7 +284,7 @@ class Experiment:
                         if verbose:
                             print(c)
                             c: Counter = Counter()  # type: ignore
-                            losses.append(self.pi.update(hists))
+                        losses.append(self.pi.update(hists))
                     hists = []
             except:
                 break
@@ -367,6 +363,7 @@ if __name__ == "__main__":
             if already_ran(model, run_name, seed):
                 print(f"Already ran {model} {run_name} {seed}")
                 continue
+            print(f"Running {model} {run_name} {seed}")
             set_seed(seed)
             env = (
                 DiscreteTennisHard(seed=seed) if hard else DiscreteTennisEasy(seed=seed)

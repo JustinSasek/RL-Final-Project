@@ -5,6 +5,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 import pandas as pd
 from glob import glob
+from tqdm import tqdm
 
 
 @dataclass()
@@ -34,13 +35,15 @@ class Graph:
 
 if __name__ == "__main__":
     g = Graph("Tennis")
-    paths = glob("rltennis/data/rl/output/results/REINFORCE/easy_seq_len2_N2_d32_lr0.001_pi0.3/**/*.csv", recursive=True)
-    data = [pd.read_csv(path) for path in paths]
-    g.add_series(data, "REINFORCE w/ mem")
-    paths = glob("rltennis/data/rl/output/results/REINFORCE/easy_seq_len1_N2_d32_lr0.001_pi0.3/**/*.csv", recursive=True)
-    data = [pd.read_csv(path) for path in paths]
-    g.add_series(data, "REINFORCE no mem")
-    paths = glob("rltennis/data/rl/output/results/REINFORCE Memory/**/*.csv", recursive=True)
-    data = [pd.read_csv(path) for path in paths]
-    g.add_series(data, "REINFORCE transformer")
+    # series = glob("rltennis/data/rl/output/results/REINFORCE/easy*", recursive=True)
+    # series = glob("rltennis/data/rl/output/results/REINFORCE/*", recursive=True)
+    # series = glob("rltennis/data/rl/output/results/REINFORCE/hard_seq_len1*", recursive=True)
+    # series = glob("rltennis/data/rl/output/results/REINFORCE Memory/easy*", recursive=True)
+    # series = glob("rltennis/data/rl/output/results/REINFORCE Memory/hard*", recursive=True)
+    # series = glob("rltennis/data/rl/output/results/REINFORCE Memory/*", recursive=True)
+    labels = ["/".join(s.split("/")[-2:]) for s in series]
+    path_lists = [glob(f"{s}/*.csv") for s in series]
+    data = [[pd.read_csv(p) for p in path_list] for path_list in path_lists]
+    for d, l in tqdm(zip(data, labels), colour="green"):
+        g.add_series(d, l)
     g.show()
