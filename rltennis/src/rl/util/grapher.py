@@ -34,9 +34,13 @@ class Graph:
 
 if __name__ == "__main__":
     g = Graph("Tennis")
-    paths = glob("rltennis/data/rl/output/results/REINFORCE/**/*.csv", recursive=True)
+    paths = glob("rltennis/data/rl/output/results/REINFORCE/easy_seq_len2_N2_d32_lr0.001_pi0.3/**/*.csv", recursive=True)
     data = [pd.read_csv(path) for path in paths]
-    for i, d in enumerate(data):
-        g.add_series([d], f"REINFORCE{i}")
-    # g.add_series(data, "REINFORCE")
+    g.add_series(data, "REINFORCE w/ mem")
+    paths = glob("rltennis/data/rl/output/results/REINFORCE/easy_seq_len1_N2_d32_lr0.001_pi0.3/**/*.csv", recursive=True)
+    data = [pd.read_csv(path) for path in paths]
+    g.add_series(data, "REINFORCE no mem")
+    paths = glob("rltennis/data/rl/output/results/REINFORCE Memory/**/*.csv", recursive=True)
+    data = [pd.read_csv(path) for path in paths]
+    g.add_series(data, "REINFORCE transformer")
     g.show()

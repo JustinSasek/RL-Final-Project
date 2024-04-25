@@ -3,7 +3,7 @@ from .discreteTennis import DiscreteTennis
 
 
 class DiscreteTennisEasy(DiscreteTennis):
-    def __init__(self, seed=None, max_game_length=None):
+    def __init__(self, seed=None):
         behavior = LearnableTennisBehavior(seed=seed)
         behavior.REWARD_MAP = {
             DiscreteTennis.ACTIVITY_SYSTEM_INVALID_SHOT: 0,
@@ -14,8 +14,8 @@ class DiscreteTennisEasy(DiscreteTennis):
             DiscreteTennis.ACTIVITY_PLAYER_SHOT: 1,
         }
         super().__init__(behavior)
-        
-        self.MAX_GAME_LENGTH = max_game_length
+
+        self.MAX_GAME_LENGTH = 8
         self.SYSTEM_ALWAYS_SERVE = True
 
 
@@ -31,5 +31,6 @@ class DiscreteTennisHard(DiscreteTennis):
             DiscreteTennis.ACTIVITY_PLAYER_SHOT: 1,
         }
         super().__init__(behavior)
-        self.MAX_GAME_LENGTH = max_game_length
+        
+        self.MAX_GAME_LENGTH = 8
         self.SYSTEM_ALWAYS_SERVE = True
