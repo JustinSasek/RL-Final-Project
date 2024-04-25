@@ -1,6 +1,9 @@
+import os
 import random
 from collections import Counter
 from dataclasses import dataclass
+from os.path import join
+from typing import Optional as Op
 
 import gym
 import numpy as np
@@ -11,36 +14,77 @@ from rl.models import SingleVectorWrapper, Transformer
 from rl.tennis.discreteTennisWrappers import *
 from tqdm import tqdm  # type: ignore
 
+STATE_FILTER = [1, 0, 6, 5, 4, 17]
+STATE_FILTER = range(17)
+RESULTS_PATH = "rltennis/data/rl/output/results"
+
+
 def set_seed(seed: int):
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
-    
-STATE_FILTER = [1, 0, 6, 5, 4]
 
+
+def already_ran(model_name: str, run_name: str, seed: int) -> bool:
+    path = join(RESULTS_PATH, model_name, run_name, f"seed{seed}.csv")
+    return os.path.exists(path)
+
+
+def save_returns(returns: list[float], model_name: str, run_name: str, seed: int):
+    path = join(RESULTS_PATH, model_name, run_name, f"seed{seed}.csv")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        f.write("Returns\n")
+        f.write("\n".join(map(str, returns)))
+
+
+@dataclass
 class Agent:
-    def __init__(
-        self,
-        state_size: int,
-        action_size: int,
-        seq_len: int,
-        epilison: float,
-        discount_rate: float,
-    ):
-        self.action_size = action_size
-        self.seq_len = seq_len
-        self.epilison = epilison
-        self.discount_rate = discount_rate
-        transformer = Transformer(
-            N=1, d_model=16, d_ff=32, h=2, max_len=seq_len, dropout=0.1
-        )
-        self.model = SingleVectorWrapper(
-            transformer=transformer,
-            input_size=state_size + 3,  # action, reward, done, state
-            output_size=action_size + 1,  # value, action1, action2, ...
-        )
+    state_size: int
+    action_size: int
+    seq_len: int
+    epilison: float
+    discount_rate: float
+    lr: float
+    MLP: bool
+    pi_loss_scale: float
+    d_model: Op[int] = None
+    N: Op[int] = None
+    h: Op[int] = None
+
+    def __post_init__(self):
+        if self.MLP:
+            self.model = torch.nn.Sequential()
+            self.model.add_module(
+                "fc0", torch.nn.Linear(self.state_size + 3, self.d_model)
+            )
+            self.model.add_module("relu0", torch.nn.LeakyReLU())
+            self.model.add_module("dropout0", torch.nn.Dropout(p=0.1))
+            for i in range(1, self.N):
+                self.model.add_module(
+                    f"fc{i}", torch.nn.Linear(self.d_model, self.d_model)
+                )
+                self.model.add_module(f"relu{i}", torch.nn.LeakyReLU())
+                self.model.add_module(f"dropout{i}", torch.nn.Dropout(p=0.1))
+            self.model.add_module(
+                "fc_out", torch.nn.Linear(self.d_model, self.action_size + 1)
+            )
+        else:
+            transformer = Transformer(
+                N=self.N,
+                d_model=self.d_model,
+                d_ff=self.d_model * 2,
+                h=self.h,
+                max_len=self.seq_len,
+                dropout=0.1,
+            )
+            self.model = SingleVectorWrapper(
+                transformer=transformer,
+                input_size=self.state_size + 3,  # action, reward, done, state
+                output_size=self.action_size + 1,  # value, action1, action2, ...
+            )
         # optimistic initialization
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = None
         # self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, 2, 0.5)
         # self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, 10)
@@ -123,7 +167,7 @@ class Agent:
         deltas = returns - values
         deltas = deltas.detach()
         pi_loss = -torch.mean(deltas * torch.log(pi_taken))
-        loss = value_loss + 0.5 * pi_loss
+        loss = (1 - self.pi_loss_scale) * value_loss + self.pi_loss_scale * pi_loss
 
         if torch.isnan(loss):
             raise ValueError("NAN Loss")
@@ -143,22 +187,33 @@ class Agent:
 
 @dataclass
 class Experiment:
+    env: gym.Env
     seq_len: int = 2
     discount_rate: float = 0.99
     epilison: float = 0.1
     batch_size: int = 4
-    horizon: int = 64
-    max_game_length: int = 4
+    horizon: Op[int] = None
     has_mem: bool = True
+    lr: float = 1e-3
+    MLP: bool = False
+    pi_loss_scale: float = 0.5
+    N: int = 1
+    d_model: int = 16
+    h: int = 2
 
     def __post_init__(self):
-        self.env = DiscreteTennisHard(max_game_length = self.max_game_length)
         self.pi = Agent(
-            len(STATE_FILTER),
-            self.env.action_space.n,  # type: ignore
-            self.seq_len,
-            self.epilison,
-            self.discount_rate,
+            state_size=len(STATE_FILTER),
+            action_size=self.env.action_space.n,  # type: ignore
+            seq_len=self.seq_len,
+            epilison=self.epilison,
+            discount_rate=self.discount_rate,
+            lr=self.lr,
+            MLP=self.MLP,
+            pi_loss_scale=self.pi_loss_scale,
+            N=self.N,
+            d_model=self.d_model,
+            h=self.h,
         )
 
     def run(
@@ -176,10 +231,12 @@ class Experiment:
         self.pi.epilison = starting_epsilon
         c: Counter = Counter()
         for ep in tqdm(range(n_episodes), colour="green"):
-            if (ep + 1) % (n_episodes // 2) == 0:
+            # for ep in range(n_episodes):
+            if (ep + 1) % (n_episodes // 4) == 0:
                 self.pi.epilison /= 2
                 pass
             s, _ = self.env.reset()
+            self.env.render()
             s = s[STATE_FILTER]
             hist = [[0, 0.0, False, *s]]  # a, r, done, s
             ep_return = 0.0
@@ -198,7 +255,7 @@ class Experiment:
                 else:
                     hist.append([0, 0.0, False, *s])
                 t += 1
-                if done or t >= self.horizon:
+                if done or (self.horizon and t >= self.horizon):
                     hists.append(hist)
                     returns.append(ep_return)
                     break
@@ -237,6 +294,62 @@ class Experiment:
 
 
 if __name__ == "__main__":
-    set_seed(42)
-    exp = Experiment(seq_len=2, has_mem=True)
-    returns, losses = exp.train(1000, verbose=False)
+
+    # model name, env hard?, seq_len, has_mem, MLP, N, d_model, lr, pi_loss_scale
+    things_to_try: list[tuple[str, bool, int, bool, bool, int, int, float, float]] = [
+        # ("REINFORCE", False, 1, False, True, 1, 16, 1e-2, 0.3),
+        # ("REINFORCE", False, 1, False, True, 1, 16, 1e-2, 0.3),
+        # ("REINFORCE", False, 1, False, True, 1, 16, 1e-4, 0.3),
+        # ("REINFORCE", False, 1, False, True, 1, 8, 1e-3, 0.3),
+        # ("REINFORCE", False, 1, False, True, 1, 32, 1e-3, 0.3),
+        # ("REINFORCE", False, 1, False, True, 2, 16, 1e-3, 0.3),
+        # ("REINFORCE", False, 1, False, True, 1, 16, 1e-3, 0.5),
+        # ("REINFORCE", False, 1, False, True, 1, 16, 1e-3, 0.2),
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-3, 0.3),
+        # ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-2, 0.3),
+        # ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-4, 0.3),
+        # ("REINFORCE Memory", False, 2, True, False, 1, 8, 1e-3, 0.3),
+        # ("REINFORCE Memory", False, 2, True, False, 1, 32, 1e-3, 0.3),
+        # ("REINFORCE Memory", False, 2, True, False, 2, 16, 1e-3, 0.3),
+        # ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-3, 0.5),
+        # ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-3, 0.2),
+    ]
+
+    for (
+        model,
+        hard,
+        seq_len,
+        has_mem,
+        MLP,
+        N,
+        d_model,
+        lr,
+        pi_loss_scale,
+    ) in things_to_try:
+        for seed in range(1):
+            run_name = f"{'hard' if hard else 'easy'}_seq_len{seq_len}_N{N}_d{d_model}_lr{lr}_pi{pi_loss_scale}"
+            if already_ran(model, run_name, seed):
+                print(f"Already ran {model} {run_name} {seed}")
+                continue
+            set_seed(seed)
+            env = (
+                DiscreteTennisHard(seed=seed) if hard else DiscreteTennisEasy(seed=seed)
+            )
+            env = DiscreteTennisEasy(seed=seed)
+            # env = DiscreteTennisHard(seed=seed)
+            exp = Experiment(
+                env=env,
+                seq_len=seq_len,
+                has_mem=has_mem,
+                MLP=MLP,
+                pi_loss_scale=pi_loss_scale,
+                N=N,
+                d_model=d_model,
+                lr=lr,
+            )
+            returns, losses = exp.train(1000, verbose=False)
+            exp.visualize(returns)
+            exp.visualize([l[0] for l in losses])
+            exp.visualize([l[1] for l in losses])
+            # exp.eval(5)
+            # save_returns(returns, model, run_name, seed)

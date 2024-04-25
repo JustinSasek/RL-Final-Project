@@ -949,14 +949,6 @@ class ExtremeProgression(Linear1xProgression):
 
 
 class TennisBehaviorShotRewardOnly(LearnableTennisBehavior):
-    # REWARD_MAP = {
-    #     DiscreteTennis.ACTIVITY_SYSTEM_INVALID_SHOT: 0,
-    #     DiscreteTennis.ACTIVITY_SYSTEM_MISS: 0,
-    #     DiscreteTennis.ACTIVITY_SYSTEM_SHOT: 0,
-    #     DiscreteTennis.ACTIVITY_PLAYER_INVALID_SHOT: 0,
-    #     DiscreteTennis.ACTIVITY_PLAYER_MISS: 0,
-    #     DiscreteTennis.ACTIVITY_PLAYER_SHOT: 1,
-    # }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
