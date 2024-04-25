@@ -949,25 +949,25 @@ class ExtremeProgression(Linear1xProgression):
 
 
 class TennisBehaviorShotRewardOnly(LearnableTennisBehavior):
-    REWARD_MAP = {
-        DiscreteTennis.ACTIVITY_SYSTEM_INVALID_SHOT: 0,
-        DiscreteTennis.ACTIVITY_SYSTEM_MISS: 0,
-        DiscreteTennis.ACTIVITY_SYSTEM_SHOT: 0,
-        DiscreteTennis.ACTIVITY_PLAYER_INVALID_SHOT: 0,
-        DiscreteTennis.ACTIVITY_PLAYER_MISS: 0,
-        DiscreteTennis.ACTIVITY_PLAYER_SHOT: 1,
-    }
+    # REWARD_MAP = {
+    #     DiscreteTennis.ACTIVITY_SYSTEM_INVALID_SHOT: 0,
+    #     DiscreteTennis.ACTIVITY_SYSTEM_MISS: 0,
+    #     DiscreteTennis.ACTIVITY_SYSTEM_SHOT: 0,
+    #     DiscreteTennis.ACTIVITY_PLAYER_INVALID_SHOT: 0,
+    #     DiscreteTennis.ACTIVITY_PLAYER_MISS: 0,
+    #     DiscreteTennis.ACTIVITY_PLAYER_SHOT: 1,
+    # }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # self.difficulty = 1.0
-        self.difficulty = 0.8
+        self.difficulty = 0.95
         self.player_shot_seq_factory = ShotSequenceFactory.get_default_factory()
         self.reset()
 
     def reset(self):
         super().reset()
-        self.direction = np.random.choice([-1, 1])
+        self.direction = self.random.choice([-1, 1])
         self.system_shot_seq_factory = ShotSequenceFactory()
         self.system_shot_seq_factory.register_seq(
             ExtremeProgression.NAME,

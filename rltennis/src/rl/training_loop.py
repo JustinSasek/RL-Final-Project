@@ -8,15 +8,15 @@ import seaborn as sns  # type: ignore
 import torch
 from matplotlib import pyplot as plt
 from rl.models import SingleVectorWrapper, Transformer
-from rl.other_envs.random_walk import RandomWalkEnv
-from rl.tennis.behaviorLearnable import TennisBehaviorShotRewardOnly
-from rl.tennis.discreteTennis import DiscreteTennis
+from rl.tennis.discreteTennisWrappers import *
 from tqdm import tqdm  # type: ignore
 
-torch.manual_seed(42)
-np.random.seed(42)
-random.seed(42)
-
+def set_seed(seed: int):
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    
+STATE_FILTER = [1, 0, 6, 5, 4]
 
 class Agent:
     def __init__(
@@ -152,11 +152,9 @@ class Experiment:
     has_mem: bool = True
 
     def __post_init__(self):
-        self.env = DiscreteTennis(TennisBehaviorShotRewardOnly())
-        self.env.MAX_GAME_LENGTH = self.max_game_length
-        self.SYSTEM_ALWAYS_SERVE = True
+        self.env = DiscreteTennisHard(max_game_length = self.max_game_length)
         self.pi = Agent(
-            self.env.observation_space.shape[0],
+            len(STATE_FILTER),
             self.env.action_space.n,  # type: ignore
             self.seq_len,
             self.epilison,
@@ -170,7 +168,6 @@ class Experiment:
         starting_epsilon: float,
         verbose: bool = False,
     ) -> tuple[list[float], list[tuple[float, float]]]:
-        self.env.reset()
 
         # Collect data, train after collecting batch_size episodes
         hists = []
@@ -183,6 +180,7 @@ class Experiment:
                 self.pi.epilison /= 2
                 pass
             s, _ = self.env.reset()
+            s = s[STATE_FILTER]
             hist = [[0, 0.0, False, *s]]  # a, r, done, s
             ep_return = 0.0
             t = 0
@@ -190,9 +188,8 @@ class Experiment:
                 a = self.pi(hist)
                 c[a] += 1
                 s, r, done, term, *_ = self.env.step(a)
+                s = s[STATE_FILTER]
                 self.env.render()
-                # s, r, done, term, *_ = self.env.step(a)
-                # self.env.render()
                 ep_return += r
                 done = done or term
                 game_done = s[-1]  # as opposed to episode done
@@ -240,10 +237,6 @@ class Experiment:
 
 
 if __name__ == "__main__":
-    # exp.load("model.pt")
-    for seq_len, has_mem in [(2, True), (1, False)]:
-        exp = Experiment(seq_len=seq_len, has_mem=has_mem)
-        returns, losses = exp.train(1000, verbose=False)
-        exp.visualize(returns)
-        exp.visualize([val for val, _ in losses])
-        exp.visualize([pi for _, pi in losses])
+    set_seed(42)
+    exp = Experiment(seq_len=2, has_mem=True)
+    returns, losses = exp.train(1000, verbose=False)
