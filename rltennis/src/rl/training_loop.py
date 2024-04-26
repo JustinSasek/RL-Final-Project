@@ -253,7 +253,7 @@ class Experiment:
         self.pi.epilison = starting_epsilon
         c: Counter = Counter()
         for ep in tqdm(range(n_episodes), colour="green"):
-        # for ep in range(n_episodes):
+            # for ep in range(n_episodes):
             try:
                 if (ep + 1) % (n_episodes // 4) == 0:
                     self.pi.epilison /= 2
@@ -318,47 +318,60 @@ class Experiment:
 if __name__ == "__main__":
 
     # model name, env hard?, seq_len, has_mem, MLP, N, d_model, lr, pi_loss_scale
+    # things_to_try: list[tuple[str, bool, int, bool, bool, int, int, float, float]] = [
+    #     ("REINFORCE", False, 1, False, True, 2, 32, 5e-4, 0.3),
+    #     ("REINFORCE", False, 1, False, True, 1, 16, 1e-3, 0.3),
+    #     ("REINFORCE", False, 1, False, True, 1, 16, 1e-4, 0.3),
+    #     ("REINFORCE", False, 1, False, True, 1, 16, 5e-4, 0.3),
+    #     ("REINFORCE", False, 1, False, True, 1, 8, 5e-4, 0.3),
+    #     ("REINFORCE", False, 1, False, True, 1, 32, 5e-4, 0.3),
+    #     ("REINFORCE", False, 1, False, True, 2, 16, 5e-4, 0.3),
+    #     ("REINFORCE", False, 1, False, True, 1, 16, 5e-4, 0.5),
+    #     ("REINFORCE", False, 1, False, True, 1, 16, 5e-4, 0.2),
+
+    #     ("REINFORCE", False, 2, True, True, 2, 32, 5e-4, 0.3),
+    #     ("REINFORCE", False, 2, True, True, 1, 16, 1e-3, 0.3),
+    #     ("REINFORCE", False, 2, True, True, 1, 16, 1e-4, 0.3),
+    #     ("REINFORCE", False, 2, True, True, 1, 8, 5e-4, 0.3),
+    #     ("REINFORCE", False, 2, True, True, 1, 32, 5e-4, 0.3),
+    #     ("REINFORCE", False, 2, True, True, 2, 16, 5e-4, 0.3),
+    #     ("REINFORCE", False, 2, True, True, 1, 16, 5e-4, 0.5),
+    #     ("REINFORCE", False, 2, True, True, 1, 16, 5e-4, 0.2),
+
+    #     ("REINFORCE Memory", False, 2, True, False, 1, 16, 5e-4, 0.3),
+    #     ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-3, 0.3),
+    #     ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-4, 0.3),
+    #     ("REINFORCE Memory", False, 2, True, False, 1, 8, 5e-4, 0.3),
+    #     ("REINFORCE Memory", False, 2, True, False, 1, 32, 5e-4, 0.3),
+    #     ("REINFORCE Memory", False, 2, True, False, 2, 16, 5e-4, 0.3),
+    #     ("REINFORCE Memory", False, 2, True, False, 1, 16, 5e-4, 0.5),
+    #     ("REINFORCE Memory", False, 2, True, False, 1, 16, 5e-4, 0.2),
+    # ]
+
+    # best
+    # model name, env hard?, seq_len, has_mem, MLP, N, d_model, lr, pi_loss_scale
     things_to_try: list[tuple[str, bool, int, bool, bool, int, int, float, float]] = [
-        ("REINFORCE", False, 1, False, True, 2, 32, 1e-3, 0.3),
-        ("REINFORCE", False, 1, False, True, 1, 16, 1e-2, 0.3),
-        ("REINFORCE", False, 1, False, True, 1, 16, 1e-4, 0.3),
-        ("REINFORCE", False, 1, False, True, 1, 8, 1e-3, 0.3),
-        ("REINFORCE", False, 1, False, True, 1, 32, 1e-3, 0.3),
-        ("REINFORCE", False, 1, False, True, 2, 16, 1e-3, 0.3),
-        ("REINFORCE", False, 1, False, True, 1, 16, 1e-3, 0.5),
-        ("REINFORCE", False, 1, False, True, 1, 16, 1e-3, 0.2),
+        ("REINFORCE", False, 1, False, True, 1, 32, 5e-4, 0.3),
+        ("REINFORCE", False, 2, True, True, 1, 8, 5e-4, 0.3),
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 2e-4, 0.3),
         
-        ("REINFORCE", False, 2, True, True, 2, 32, 1e-3, 0.3),
-        ("REINFORCE", False, 2, True, True, 1, 16, 1e-2, 0.3),
-        ("REINFORCE", False, 2, True, True, 1, 16, 1e-4, 0.3),
-        ("REINFORCE", False, 2, True, True, 1, 8, 1e-3, 0.3),
-        ("REINFORCE", False, 2, True, True, 1, 32, 1e-3, 0.3),
-        ("REINFORCE", False, 2, True, True, 2, 16, 1e-3, 0.3),
-        ("REINFORCE", False, 2, True, True, 1, 16, 1e-3, 0.5),
-        ("REINFORCE", False, 2, True, True, 1, 16, 1e-3, 0.2),
-        
-        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-3, 0.3),
-        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-2, 0.3),
-        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-4, 0.3),
-        ("REINFORCE Memory", False, 2, True, False, 1, 8, 1e-3, 0.3),
-        ("REINFORCE Memory", False, 2, True, False, 1, 32, 1e-3, 0.3),
-        ("REINFORCE Memory", False, 2, True, False, 2, 16, 1e-3, 0.3),
-        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-3, 0.5),
-        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-3, 0.2),
+        ("REINFORCE", True, 1, False, True, 1, 32, 5e-4, 0.3),
+        ("REINFORCE", True, 2, True, True, 1, 8, 5e-4, 0.3),
+        ("REINFORCE Memory", True, 2, True, False, 1, 16, 2e-4, 0.3),
     ]
 
-    for (
-        model,
-        hard,
-        seq_len,
-        has_mem,
-        MLP,
-        N,
-        d_model,
-        lr,
-        pi_loss_scale,
-    ) in things_to_try:
-        for seed in range(1):
+    for seed in range(1, 5):
+        for (
+            model,
+            hard,
+            seq_len,
+            has_mem,
+            MLP,
+            N,
+            d_model,
+            lr,
+            pi_loss_scale,
+        ) in things_to_try:
             run_name = f"{'hard' if hard else 'easy'}_seq_len{seq_len}_N{N}_d{d_model}_lr{lr}_pi{pi_loss_scale}"
             if already_ran(model, run_name, seed):
                 print(f"Already ran {model} {run_name} {seed}")
