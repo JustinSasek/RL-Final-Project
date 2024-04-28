@@ -12,7 +12,7 @@ class SingleVectorWrapper(ModelInterface):
     transformer: Transformer = field(default_factory=Transformer)
     input_size: int = 1
     output_size: int = 1
-    dropout = 0.1
+    dropout: float = 0.1
 
     def __post_init__(self):
         self.fc_in = nn.Linear(self.input_size, self.transformer.d_model)

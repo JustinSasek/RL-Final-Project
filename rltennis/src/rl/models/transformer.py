@@ -59,7 +59,7 @@ class Transformer(ModelInterface):
 
     def get_attn(self, layer: int):
         """Visualization function to get attention weights"""
-        return self.decoder_layers[layer].attn
+        return self.decoder_layers[layer].attn.attn
 
 
 class PosEncoding(nn.Module):
@@ -186,10 +186,10 @@ class MultiHeadAttention(nn.Module):
         attn = self.attn_dropout(attn)
         attn = self.mask(attn)
         attn = nn.functional.softmax(attn, dim=-1)
+        self.attn = attn
 
         # (..., seq_len, seq_len(weights)) @ (..., seq_len, d_h) -> (..., seq_len, d_h
         v_prime = attn @ v
-        self.attn = attn
         return v_prime
 
     def mask(self, x: torch.Tensor) -> torch.Tensor:
