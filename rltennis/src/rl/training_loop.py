@@ -332,114 +332,102 @@ class Experiment:
 if __name__ == "__main__":
     # find best LR
     # model name, env hard?, seq_len, has_mem, MLP, N, d_model, lr, pi_loss_scale
-    # things_to_try: list[tuple[str, bool, int, bool, bool, int, int, float, float]] = [
-    #     ("REINFORCE", False, 1, False, True, 1, 16, 1e-3, 0.3),
-    #     ("REINFORCE", False, 1, False, True, 1, 16, 5e-3, 0.3),
-    #     ("REINFORCE", False, 1, False, True, 1, 16, 1e-2, 0.3),
-    #     ("REINFORCE", False, 1, False, True, 1, 16, 5e-2, 0.3),
+    things_to_try1: list[tuple[str, bool, int, bool, bool, int, int, float, float]] = [
+        ("REINFORCE", False, 1, False, True, 1, 16, 1e-3, 0.3),
+        ("REINFORCE", False, 1, False, True, 1, 16, 5e-3, 0.3),
+        ("REINFORCE", False, 1, False, True, 1, 16, 1e-2, 0.3),
+        ("REINFORCE", False, 1, False, True, 1, 16, 5e-2, 0.3),
 
-    # ]
+    ]
 
     # model name, env hard?, seq_len, has_mem, MLP, N, d_model, lr, pi_loss_scale, norm
-    # things_to_try: list[
-    #     tuple[str, bool, int, bool, bool, int, int, float, float, float]
-    # ] = [
-    #     ("REINFORCE", False, 1, False, True, 1, 16, 1e-2, 0.5, 1e-4),
-    #     ("REINFORCE", False, 1, False, True, 1, 16, 2e-2, 0.5, 1e-4),
-    #     ("REINFORCE", False, 1, False, True, 1, 16, 5e-3, 0.5, 1e-4),
-    #     ("REINFORCE", False, 1, False, True, 1, 8, 1e-2, 0.5, 1e-4),
-    #     ("REINFORCE", False, 1, False, True, 1, 32, 1e-2, 0.5, 1e-4),
-    #     ("REINFORCE", False, 1, False, True, 2, 16, 1e-2, 0.5, 1e-4),
-    #     ("REINFORCE", False, 1, False, True, 1, 16, 1e-2, 0.7, 1e-4),
-    #     ("REINFORCE", False, 1, False, True, 1, 16, 1e-2, 0.3, 1e-4),
-    #     ("REINFORCE", False, 2, True, True, 1, 16, 1e-2, 0.5, 1e-4),
-    #     ("REINFORCE", False, 2, True, True, 1, 16, 2e-2, 0.5, 1e-4),
-    #     ("REINFORCE", False, 2, True, True, 1, 16, 5e-3, 0.5, 1e-4),
-    #     ("REINFORCE", False, 2, True, True, 1, 8, 1e-2, 0.5, 1e-4),
-    #     ("REINFORCE", False, 2, True, True, 1, 32, 1e-2, 0.5, 1e-4),
-    #     ("REINFORCE", False, 2, True, True, 2, 16, 1e-2, 0.5, 1e-4),
-    #     ("REINFORCE", False, 2, True, True, 1, 16, 1e-2, 0.7, 1e-4),
-    #     ("REINFORCE", False, 2, True, True, 1, 16, 1e-2, 0.3, 1e-4),
+    things_to_try2: list[
+        tuple[str, bool, int, bool, bool, int, int, float, float, float]
+    ] = [
+        ("REINFORCE", False, 1, False, True, 1, 16, 1e-2, 0.5, 1e-4),
+        ("REINFORCE", False, 1, False, True, 1, 16, 2e-2, 0.5, 1e-4),
+        ("REINFORCE", False, 1, False, True, 1, 16, 5e-3, 0.5, 1e-4),
+        ("REINFORCE", False, 1, False, True, 1, 8, 1e-2, 0.5, 1e-4),
+        ("REINFORCE", False, 1, False, True, 1, 32, 1e-2, 0.5, 1e-4),
+        ("REINFORCE", False, 1, False, True, 2, 16, 1e-2, 0.5, 1e-4),
+        ("REINFORCE", False, 1, False, True, 1, 16, 1e-2, 0.7, 1e-4),
+        ("REINFORCE", False, 1, False, True, 1, 16, 1e-2, 0.3, 1e-4),
+        ("REINFORCE", False, 2, True, True, 1, 16, 1e-2, 0.5, 1e-4),
+        ("REINFORCE", False, 2, True, True, 1, 16, 2e-2, 0.5, 1e-4),
+        ("REINFORCE", False, 2, True, True, 1, 16, 5e-3, 0.5, 1e-4),
+        ("REINFORCE", False, 2, True, True, 1, 8, 1e-2, 0.5, 1e-4),
+        ("REINFORCE", False, 2, True, True, 1, 32, 1e-2, 0.5, 1e-4),
+        ("REINFORCE", False, 2, True, True, 2, 16, 1e-2, 0.5, 1e-4),
+        ("REINFORCE", False, 2, True, True, 1, 16, 1e-2, 0.7, 1e-4),
+        ("REINFORCE", False, 2, True, True, 1, 16, 1e-2, 0.3, 1e-4),
 
-    # ]
+    ]
 
     # best
     # model name, env hard?, seq_len, has_mem, MLP, N, d_model, lr, pi_loss_scale, norm
-    things_to_try: list[tuple[str, bool, int, bool, bool, int, int, float, float, float]] = [
-        # ("REINFORCE", False, 1, False, True, 2, 32, 0.02, 0.7, 1e-4),
-        # ("REINFORCE", False, 2, True, True, 2, 32, 0.01, 0.5, 1e-4),
+    things_to_try3: list[tuple[str, bool, int, bool, bool, int, int, float, float, float]] = [
+        ("REINFORCE", False, 1, False, True, 2, 32, 0.02, 0.7, 1e-4),
+        ("REINFORCE", False, 2, True, True, 2, 32, 0.01, 0.5, 1e-4),
 
-        # ("REINFORCE", True, 1, False, True, 2, 32, 0.02, 0.7, 1e-4),
+        ("REINFORCE", True, 1, False, True, 2, 32, 0.02, 0.7, 1e-4),
         ("REINFORCE", True, 2, True, True, 2, 32, 0.01, 0.5, 1e-4),
     ]
-
-    # find best norm
-    # model name, env hard?, seq_len, has_mem, MLP, N, d_model, lr, pi_loss_scale, norm
-    # things_to_try: list[
-    #     tuple[str, bool, int, bool, bool, int, int, float, float, float]
-    # ] = [
-    #     ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-2, 0.5, 1e2),
-    #     ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-2, 0.5, 1e1),
-    #     # ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-2, 0.5, 1e0),
-    #     # ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-2, 0.5, 1e-1),
-    #     # ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-2, 0.5, 1e-2),
-    #     # ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-2, 0.5, 1e-3),
-    # ]
-
-    for seed in range(5, 10):
-        for (
-            model,
-            hard,
-            seq_len,
-            has_mem,
-            MLP,
-            N,
-            d_model,
-            lr,
-            pi_loss_scale,
-            norm,
-        ) in things_to_try:
-            run_name = f"{'hard' if hard else 'easy'}_seq_len{seq_len}_N{N}_d{d_model}_lr{lr}_pi{pi_loss_scale}"
-            if not MLP:
-                run_name += f"_l2{norm}"
-            if already_ran(model, run_name, seed):
-                print(f"Already ran {model} {run_name} {seed}")
-                continue
-            print(f"Running {model} {run_name} {seed}")
-            set_seed(seed)
-            env = (
-                DiscreteTennisHard(seed=seed) if hard else DiscreteTennisEasy(seed=seed)
-            )
-            exp = Experiment(
-                env=env,
-                seq_len=seq_len,
-                has_mem=has_mem,
-                MLP=MLP,
-                pi_loss_scale=pi_loss_scale,
-                N=N,
-                d_model=d_model,
-                lr=lr,
-                norm=norm,
-            )
-
-            def handler(signum, frame):
-                raise TimeoutError()
-
-            signal.signal(signal.SIGALRM, handler)
-
-            try:
-                signal.alarm(60 * 30)  # 30 minutes
-                returns, losses = exp.train(
-                    10000,
-                    verbose=False,
-                    callback=lambda returns: save_returns(
-                        returns, model, run_name, seed
-                    ),
+    
+    for things_to_try, n_seeds in zip([things_to_try1, things_to_try2, things_to_try3], [1, 1, 5]):
+        for seed in range(n_seeds):
+            for (
+                model,
+                hard,
+                seq_len,
+                has_mem,
+                MLP,
+                N,
+                d_model,
+                lr,
+                pi_loss_scale,
+                norm,
+            ) in things_to_try:
+                run_name = f"{'hard' if hard else 'easy'}_seq_len{seq_len}_N{N}_d{d_model}_lr{lr}_pi{pi_loss_scale}"
+                if not MLP:
+                    run_name += f"_l2{norm}"
+                if already_ran(model, run_name, seed):
+                    print(f"Already ran {model} {run_name} {seed}")
+                    continue
+                print(f"Running {model} {run_name} {seed}")
+                set_seed(seed)
+                env = (
+                    DiscreteTennisHard(seed=seed) if hard else DiscreteTennisEasy(seed=seed)
                 )
-                # exp.visualize(returns)
-                # exp.visualize([l[0] for l in losses])
-                # exp.visualize([l[1] for l in losses])
-                # exp.eval(5)
-            except Exception as e:
-                print(e)
-                continue
+                exp = Experiment(
+                    env=env,
+                    seq_len=seq_len,
+                    has_mem=has_mem,
+                    MLP=MLP,
+                    pi_loss_scale=pi_loss_scale,
+                    N=N,
+                    d_model=d_model,
+                    lr=lr,
+                    norm=norm,
+                )
+
+                def handler(signum, frame):
+                    raise TimeoutError()
+
+                signal.signal(signal.SIGALRM, handler)
+
+                try:
+                    signal.alarm(60 * 30)  # 30 minutes
+                    returns, losses = exp.train(
+                        10000,
+                        verbose=False,
+                        callback=lambda returns: save_returns(
+                            returns, model, run_name, seed
+                        ),
+                    )
+                    # exp.visualize(returns)
+                    # exp.visualize([l[0] for l in losses])
+                    # exp.visualize([l[1] for l in losses])
+                    # exp.eval(5)
+                except Exception as e:
+                    print(e)
+                    continue
