@@ -1,10 +1,10 @@
-from .behaviorLearnable import LearnableTennisBehavior, TennisBehaviorShotRewardOnly
-from .discreteTennis import DiscreteTennis
+from rl.tennis.behaviorLearnable import LearnableTennisBehavior, TennisBehaviorShotRewardOnly
+from rl.tennis.discreteTennis import DiscreteTennis
 
 
 class DiscreteTennisEasy(DiscreteTennis):
     def __init__(self, seed=None):
-        behavior = LearnableTennisBehavior(seed=seed)
+        behavior = LearnableTennisBehavior()
         behavior.REWARD_MAP = {
             DiscreteTennis.ACTIVITY_SYSTEM_INVALID_SHOT: 0,
             DiscreteTennis.ACTIVITY_SYSTEM_MISS: 0,

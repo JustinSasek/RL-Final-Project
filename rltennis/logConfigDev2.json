@@ -1,0 +1,68 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "simple": {
+            "format": "%(asctime)s|%(name)s|%(levelname)s|%(filename)s|%(lineno)d|%(message)s"
+        }
+    },
+
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "DEBUG",
+            "formatter": "simple",
+            "stream": "ext://sys.stdout"
+        },
+
+        "file_handler": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "level": "DEBUG",
+            "formatter": "simple",
+            "filename": "/tmp/pysam.log",
+            "maxBytes": 104857600,
+            "backupCount": 20,
+            "encoding": "utf8"
+        }
+    },
+
+    "loggers": {
+    	"test.rl.tennis.GameControl": {
+        	"level": "DEBUG",
+            "propagate": true
+        },
+        "rl.tennis.DQNTennisAgent": {
+        	"level": "DEBUG",
+            "propagate": true
+        },
+        "tensorflow": {
+            "level": "ERROR",
+            "propagate": true
+        },
+        "pysam": {
+            "level": "ERROR",
+            "propagate": true
+        },
+        "spcoreutil": {
+            "level": "ERROR",
+            "propagate": true
+        },
+        "rl": {
+            "level": "ERROR",
+            "propagate": true
+        },
+        "test": {
+            "level": "ERROR",
+            "propagate": true
+        },
+        "__main__": {
+            "level": "ERROR",
+            "propagate": true
+        }
+    },
+
+    "root": {
+        "level": "WARNING",
+        "handlers": ["file_handler"]
+    }
+}
