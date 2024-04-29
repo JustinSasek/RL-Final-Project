@@ -208,9 +208,9 @@ class FeedForward(nn.Module):
     def __init__(self, config: Transformer):
         super().__init__()
         self.fc0 = nn.Linear(config.d_model, config.d_ff)
-        self.batch_norm0 = nn.BatchNorm1d(
-            config.d_ff, affine=False, track_running_stats=False
-        )
+        # self.batch_norm0 = nn.BatchNorm1d(
+        #     config.d_ff, affine=False, track_running_stats=False
+        # )
         self.act0 = nn.LeakyReLU()
         self.dropout0 = nn.Dropout(config.dropout)
         self.fc1 = nn.Linear(config.d_ff, config.d_model)
@@ -221,8 +221,8 @@ class FeedForward(nn.Module):
         """
         x_orig = x
         x = self.fc0(x)
-        if sum(x.shape[:-1]) > 1:
-            x = self.batch_norm0(x)
+        # if sum(x.shape[:-1]) > 1:
+        #     x = self.batch_norm0(x)
         x = self.act0(x)
         x = self.dropout0(x)
         x = self.fc1(x)

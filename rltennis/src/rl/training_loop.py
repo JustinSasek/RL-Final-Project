@@ -194,8 +194,6 @@ class Agent:
                 attn = self.model.transformer.get_attn(n)
                 attn_loss = torch.norm(attn, p=2) * self.norm
                 loss += attn_loss
-            # for param in self.model.parameters():
-            #     loss += torch.norm(param, p=2) * self.norm
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -337,7 +335,10 @@ if __name__ == "__main__":
         ("REINFORCE", False, 1, False, True, 1, 16, 5e-3, 0.3),
         ("REINFORCE", False, 1, False, True, 1, 16, 1e-2, 0.3),
         ("REINFORCE", False, 1, False, True, 1, 16, 5e-2, 0.3),
-
+        #
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-4, 0.3),
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 5e-4, 0.3),
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-3, 0.3),
     ]
 
     # model name, env hard?, seq_len, has_mem, MLP, N, d_model, lr, pi_loss_scale, norm
@@ -352,6 +353,7 @@ if __name__ == "__main__":
         ("REINFORCE", False, 1, False, True, 2, 16, 1e-2, 0.5, 1e-4),
         ("REINFORCE", False, 1, False, True, 1, 16, 1e-2, 0.7, 1e-4),
         ("REINFORCE", False, 1, False, True, 1, 16, 1e-2, 0.3, 1e-4),
+        #
         ("REINFORCE", False, 2, True, True, 1, 16, 1e-2, 0.5, 1e-4),
         ("REINFORCE", False, 2, True, True, 1, 16, 2e-2, 0.5, 1e-4),
         ("REINFORCE", False, 2, True, True, 1, 16, 5e-3, 0.5, 1e-4),
@@ -360,6 +362,16 @@ if __name__ == "__main__":
         ("REINFORCE", False, 2, True, True, 2, 16, 1e-2, 0.5, 1e-4),
         ("REINFORCE", False, 2, True, True, 1, 16, 1e-2, 0.7, 1e-4),
         ("REINFORCE", False, 2, True, True, 1, 16, 1e-2, 0.3, 1e-4),
+        #
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 5e-4, 0.3, 1e-4),
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-3, 0.3, 1e-4),
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-4, 0.3, 1e-4),
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 2e-4, 0.3, 1e-4),
+        ("REINFORCE Memory", False, 2, True, False, 1, 8, 5e-4, 0.3, 1e-4),
+        ("REINFORCE Memory", False, 2, True, False, 1, 32, 5e-4, 0.3, 1e-4),
+        ("REINFORCE Memory", False, 2, True, False, 2, 16, 5e-4, 0.3, 1e-4),
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 5e-4, 0.5, 1e-4),
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 5e-4, 0.2, 1e-4),
 
     ]
 
@@ -372,8 +384,48 @@ if __name__ == "__main__":
         ("REINFORCE", True, 1, False, True, 2, 32, 0.02, 0.7, 1e-4),
         ("REINFORCE", True, 2, True, True, 2, 32, 0.01, 0.5, 1e-4),
     ]
+
+    # Transformer
+    # best lr
+    things_to_try4: list[tuple[str, bool, int, bool, bool, int, int, float, float, float]] = [
+        ("REINFORCE Memory", True, 2, True, False, 1, 16, 0.1, 0.3, 1e-4),
+        ("REINFORCE Memory", True, 2, True, False, 1, 16, 0.2, 0.3, 1e-4),
+        ("REINFORCE Memory", True, 2, True, False, 1, 16, 0.01, 0.3, 1e-4),
+        ("REINFORCE Memory", True, 2, True, False, 1, 16, 0.02, 0.3, 1e-3),
+    ]
+
+    # model name, env hard?, seq_len, has_mem, MLP, N, d_model, lr, pi_loss_scale, norm
+    things_to_try5: list[
+        tuple[str, bool, int, bool, bool, int, int, float, float, float]
+    ] = [
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-2, 0.3, 1e-4),
+        ("REINFORCE Memory", False, 2, True, False, 2, 16, 1e-2, 0.3, 1e-4),
+        ("REINFORCE Memory", False, 2, True, False, 1, 32, 1e-2, 0.3, 1e-4),
+        ("REINFORCE Memory", False, 2, True, False, 1, 8, 1e-2, 0.3, 1e-4),
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-2, 0.5, 1e-4),
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-2, 0.7, 1e-4),
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-2, 0.3, 1e-3),
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-2, 0.3, 1e-2),
+    ]
     
-    for things_to_try, n_seeds in zip([things_to_try1, things_to_try2, things_to_try3], [1, 1, 5]):
+    things_to_try6: list[
+        tuple[str, bool, int, bool, bool, int, int, float, float, float]
+    ] = [
+        ("REINFORCE Memory", False, 2, True, False, 1, 16, 1e-2, 0.3, 1e-3),
+        ("REINFORCE Memory", True, 2, True, False, 1, 16, 1e-2, 0.3, 1e-3),
+    ]
+
+    for things_to_try, n_seeds in zip(
+        [
+            things_to_try1,
+            things_to_try2,
+            things_to_try3,
+            things_to_try4,
+            things_to_try5,
+            things_to_try6,
+        ],
+        [1, 1, 5, 1, 1, 5]
+    ):
         for seed in range(n_seeds):
             for (
                 model,
@@ -396,7 +448,9 @@ if __name__ == "__main__":
                 print(f"Running {model} {run_name} {seed}")
                 set_seed(seed)
                 env = (
-                    DiscreteTennisHard(seed=seed) if hard else DiscreteTennisEasy(seed=seed)
+                    DiscreteTennisHard(seed=seed)
+                    if hard
+                    else DiscreteTennisEasy(seed=seed)
                 )
                 exp = Experiment(
                     env=env,
@@ -418,7 +472,7 @@ if __name__ == "__main__":
                 try:
                     signal.alarm(60 * 30)  # 30 minutes
                     returns, losses = exp.train(
-                        10000,
+                        5000,
                         verbose=False,
                         callback=lambda returns: save_returns(
                             returns, model, run_name, seed
