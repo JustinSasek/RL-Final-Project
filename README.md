@@ -30,7 +30,7 @@ The other baseline algorithms are located in a different script because they do 
 
 ### 1. Python Environment Setup
 
-A python virtual environment was created using the virtualenv tool which can be installed with the commands in a Linux terminal:
+A python virtual environment was created using the virtualenv tool which can be installed with the commands in a Linux terminal running Ubuntu 22.04:
 
 ``` bash
 sudo apt-get update
@@ -66,7 +66,19 @@ sudo apt-get install hdf5-tools
 pip install gymnasium
 ```
 
-### 2. Eclipse IDE Environment
+### 2. Runtime Scripts
+The source comprises of scripts that may be used to launch the corresponding
+python executable module in a Linux Terminal with an active virtualenv 
+prepared as per the instructions in above section. Ensure that the scripts
+have execute permission for current user. (if not, do chmod +x script-path)
+
+Use the -h command line option to obtain additional command-line options for 
+each module, as applicable.
+
+### 3. Eclipse IDE Environment
+
+As an alternative to running the scripts described in previous section, it is also possible to run the programs using an 
+Eclipse IDE as under:
 
 Install Eclipse eclipse-2024-03-R as obtained from [eclipse.org/downloads/packages](eclipse.org/downloads/packages) for Eclipse IDE for Enterprise Java and Web Developers and install the PyDev version 12.0.0.202402010911 addon using Eclipse Marketplace.
 
@@ -78,9 +90,11 @@ Launch the eclipse IDE and use File -> Import -> Existing Projects into Workspac
 2. Right click the file and in the pop-up menu, select Run as -> Python Run
 3. Stop the program and configure its arguments by clicking the menu Run -> Run Configurations ... -> Python Run -> `executable .py` and specify the required arguments in the Arguments tab
 
-### 3. Agent Game Driver
+### 4. Agent Game Driver
 
-Program Path: `test/rl/test_tennis/agentGame.py`
+Script Path: `rltennis/script/runAgentGame.sh`
+Program Path: `rltennis/test/test_rl/test_tennis/agentGame.py`
+
 Run this driver program to perform training and visual rendering of a trained agent's play using different RL algorithms.
 
 Different command line options and in-program ASCII menu based options provides good flexibility to perform extensive training and testing for a wide array of usecases.
@@ -115,18 +129,19 @@ Some of the exemplary test run options include the following:
     In-program menu option:
     "111: Render QTable for episode models", select directory of pre-saved model files and an optional directory where the result svg files must be stored.
 
-### 4. Interactive Game
+### 5. Interactive Game
 
-Program Path: `test/rl/test_tennis/interactiveGame.py`
+Script Path: `rltennis/script/runInteractiveGame.sh`
+Program Path: `rltennis/test/test_rl/test_tennis/interactiveGame.py`
 This test program can be used to demonstrate the interactive play tennis environment where a human player can play against the system.
 
 Command Line Argument: `--seed=20`
 
 The in-program menu allows the human player to select a move action (during system shot) or a fire action for player's shot. Additionally, it is possible to capture all actions taken during a game in the `data/rl/output/action.tn` file and use this file to replay the actions (Option 101: Replay Actions from File) for an automatic batch play.
 
-### 5. Environment Animations
+### 6. Environment Animations
 
-Program Path: `test/rl/test_tennis/testAnimation.py`
+Script Path: `rltennis/script/runTestAnimation.sh`
+Program Path: `rltennis/test/rl/test_tennis/testAnimation.py`
 
 This test program tests some of the animations that are necessary to render the optional visual rendering aspect of the custom Tennis environment created for this project.
-
